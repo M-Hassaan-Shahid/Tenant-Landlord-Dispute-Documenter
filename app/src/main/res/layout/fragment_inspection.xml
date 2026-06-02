@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/proofnest_background">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorPrimary">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            style="@style/Widget.ProofNest.Toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="@string/tile_move_in" />
+
+        <include
+            android:id="@+id/inspectionProgress"
+            layout="@layout/include_inspection_progress" />
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayoutRooms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/proofnest_surface"
+            app:tabIndicatorColor="@color/proofnest_primary"
+            app:tabMode="scrollable"
+            app:tabSelectedTextColor="@color/proofnest_primary"
+            app:tabTextColor="@color/proofnest_on_surface_muted" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPagerRooms"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingBottom="72dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonFinishInspection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginHorizontal="@dimen/content_padding"
+        android:layout_marginBottom="16dp"
+        android:text="@string/finish_inspection"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

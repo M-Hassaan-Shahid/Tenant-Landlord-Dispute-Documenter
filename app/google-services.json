@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "77809403694",
+    "project_id": "dispute-documenter",
+    "storage_bucket": "dispute-documenter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:77809403694:android:1a7eb71a59b061cfc0dcbf",
+        "android_client_info": {
+          "package_name": "com.example.tenant_landlorddisputedocumenter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_sjXNCXWKDqL4DINWV4qghimNFTocWUA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

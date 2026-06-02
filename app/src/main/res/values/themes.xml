@@ -1,0 +1,70 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Material 3 base theme for XML views. -->
+    <style name="Base.Theme.ProofNest" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/proofnest_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/proofnest_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/proofnest_on_primary_container</item>
+        <item name="colorSecondary">@color/proofnest_secondary</item>
+        <item name="colorSecondaryContainer">@color/proofnest_secondary_container</item>
+        <item name="android:colorBackground">@color/proofnest_background</item>
+        <item name="colorSurface">@color/proofnest_surface</item>
+        <item name="colorOnSurface">@color/proofnest_on_surface</item>
+        <item name="colorSurfaceVariant">@color/proofnest_surface_variant</item>
+        <item name="colorOutline">@color/proofnest_outline</item>
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:navigationBarColor">@color/proofnest_surface</item>
+        <item name="shapeAppearanceCornerSmall">@style/ShapeAppearance.ProofNest.SmallComponent</item>
+        <item name="shapeAppearanceCornerMedium">@style/ShapeAppearance.ProofNest.SmallComponent</item>
+        <item name="textInputStyle">@style/Widget.ProofNest.TextInputLayout</item>
+    </style>
+
+    <style name="Widget.ProofNest.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox" />
+
+    <style name="Theme.ProofNest.Main" parent="Theme.ProofNest">
+        <item name="android:colorBackground">@color/proofnest_background</item>
+    </style>
+
+    <style name="Theme.ProofNest" parent="Base.Theme.ProofNest" />
+
+    <!-- Splash: matches prototype (#0F1E14, amber wordmark, loader). -->
+    <style name="Theme.ProofNest.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_blank</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/Theme.ProofNest.Splash.Activity</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+    <style name="Theme.ProofNest.Splash.Activity" parent="Theme.ProofNest">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+    <!-- Compact toolbar style used by every screen. -->
+    <style name="Widget.ProofNest.Toolbar" parent="Widget.Material3.Toolbar">
+        <item name="android:background">?attr/colorPrimary</item>
+        <item name="titleTextColor">@color/white</item>
+        <item name="navigationIcon">@drawable/ic_nav_back_circle</item>
+        <item name="navigationIconTint">@color/white</item>
+    </style>
+
+    <style name="TextAppearance.ProofNest.Title" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.ProofNest.Section" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Fullscreen / camera screens — no ActionBar or status bar tint -->
+    <style name="Theme.ProofNest.NoActionBar" parent="Theme.ProofNest">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+</resources>

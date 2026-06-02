@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="card_margin">12dp</dimen>
+    <dimen name="content_padding">16dp</dimen>
+    <dimen name="property_thumb_size">48dp</dimen>
+    <dimen name="notif_icon_size">40dp</dimen>
+    <dimen name="photo_thumb_size">52dp</dimen>
+</resources>

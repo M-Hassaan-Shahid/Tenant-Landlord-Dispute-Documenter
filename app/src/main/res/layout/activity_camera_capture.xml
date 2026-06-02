@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/viewFinder"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/barMetadata"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarCamera"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@android:color/transparent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:navigationIcon="@drawable/ic_nav_back_circle"
+        app:title="@string/capture_proof_title"
+        app:titleTextColor="@color/white" />
+
+    <TextView
+        android:id="@+id/barMetadata"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/camera_metadata_scrim"
+        android:gravity="center"
+        android:paddingVertical="8dp"
+        android:textAppearance="?attr/textAppearanceLabelSmall"
+        android:textColor="@color/white"
+        app:layout_constraintBottom_toTopOf="@id/cameraBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:text="GPS · 31.5204° N · 2 Jun 2026, 15:04" />
+
+    <LinearLayout
+        android:id="@+id/cameraBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/camera_bar_scrim"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingVertical="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <View
+            android:id="@+id/buttonCapture"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:background="@drawable/bg_shutter_ring"
+            android:clickable="true"
+            android:contentDescription="@string/action_capture"
+            android:focusable="true" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function propertyData(propertyId) {
+      return get(/databases/$(database)/documents/properties/$(propertyId)).data;
+    }
+
+    function isPropertyMember(propertyId) {
+      let p = propertyData(propertyId);
+      return isSignedIn() && (
+        p.landlordId == request.auth.uid ||
+        p.tenantId == request.auth.uid
+      );
+    }
+
+    function isPropertyLandlord() {
+      return isSignedIn() && resource.data.landlordId == request.auth.uid;
+    }
+
+    function isPropertyTenant() {
+      return isSignedIn() && resource.data.tenantId == request.auth.uid;
+    }
+
+    function isVacantPropertyJoin() {
+      return isSignedIn()
+        && resource.data.tenantId == null
+        && request.resource.data.tenantId == request.auth.uid
+        && request.resource.data.landlordId == resource.data.landlordId
+        && request.resource.data.inviteCode == resource.data.inviteCode;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+    }
+
+    match /inviteCodes/{code} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.landlordId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.landlordId == request.auth.uid;
+    }
+
+    match /properties/{propertyId} {
+      allow read: if isSignedIn() && (
+        isPropertyLandlord() ||
+        isPropertyTenant()
+      );
+      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isPropertyLandlord() ||
+        isPropertyTenant() ||
+        isVacantPropertyJoin()
+      );
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId);
+      allow update, delete: if isPropertyMember(resource.data.propertyId);
+    }
+
+    match /items/{itemId} {
+      allow read: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId);
+      allow update, delete: if isPropertyMember(resource.data.propertyId);
+    }
+
+    match /photos/{photoId} {
+      allow read: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId);
+      allow update, delete: if isPropertyMember(resource.data.propertyId);
+    }
+
+    match /signatures/{signatureId} {
+      allow read: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId);
+      allow update, delete: if isPropertyMember(resource.data.propertyId);
+    }
+
+    match /disputes/{disputeId} {
+      allow read: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId);
+      allow update, delete: if isPropertyMember(resource.data.propertyId);
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,66 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration (SDK path — machine-specific)
+local.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+.idea/**
+!.idea/codeStyles/
+!.idea/runConfigurations.xml
+!.idea/inspectionProfiles/
+
+# Kotlin
+.kotlin/
+
+# Android Studio captures folder
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Log / crash
+*.log
+*.hprof
+
+# Firebase CLI & Functions
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+firebase/functions/node_modules/
+
+# Secrets & signing (never commit)
+*.jks
+*.keystore
+key.properties
+**/service-account*.json
+**/credentials.json
+.env
+.env.*
+
+# Google Services (uncomment if you use a committed template instead)
+# app/google-services.json

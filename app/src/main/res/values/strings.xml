@@ -1,0 +1,219 @@
+<resources>
+    <string name="app_name">ProofNest</string>
+    <string name="splash_tagline">Bilateral, timestamped property records</string>
+    <string name="default_notification_channel_id">proofnest_default</string>
+    <string name="default_notification_channel_name">ProofNest Updates</string>
+
+    <!-- Generic -->
+    <string name="action_continue">Continue</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_submit">Submit</string>
+    <string name="action_next">Next</string>
+    <string name="action_back">Back</string>
+    <string name="action_done">Done</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_add">Add</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_sign_out">Sign out</string>
+    <string name="action_sign_in">Sign in</string>
+    <string name="action_create_account">Create account</string>
+    <string name="action_share">Share</string>
+    <string name="loading">Loading…</string>
+
+    <!-- Auth -->
+    <string name="auth_welcome_title">ProofNest</string>
+    <string name="auth_welcome_subtitle">Bilateral, timestamped property records that hold up in court.</string>
+    <string name="auth_role_landlord">Landlord</string>
+    <string name="auth_role_tenant">Tenant</string>
+    <string name="auth_role_prompt">I\'m joining as a…</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_confirm_password">Confirm password</string>
+    <string name="hint_full_name">Full name</string>
+    <string name="hint_phone">Phone number</string>
+    <string name="hint_cnic">CNIC / National ID</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="forgot_send_reset">Send reset email</string>
+    <string name="forgot_password_title">Reset password</string>
+    <string name="forgot_password_subtitle">We\'ll send a reset link to the email on file.</string>
+    <string name="have_account">I already have an account</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">My properties</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_profile">Profile</string>
+    <string name="label_financials">Financials</string>
+    <string name="approval_waiting_body">A tenant is waiting to join this property.</string>
+    <string name="dashboard_welcome">Good afternoon, %1$s</string>
+    <string name="dashboard_welcome_subtitle">%1$d properties · %2$d action needed</string>
+    <string name="dashboard_welcome_subtitle_none">%1$d properties</string>
+    <string name="property_details_title">Property</string>
+    <string name="invite_code_label">Invite code — share with tenant</string>
+    <string name="invite_copy">Copy code</string>
+    <string name="invite_copied">Copied!</string>
+    <string name="mark_all_read_done">All read</string>
+    <string name="feature_photos_title">Stamped photos</string>
+    <string name="feature_photos_body">GPS and time on every capture—hard to dispute later.</string>
+    <string name="feature_sign_title">Both parties sign</string>
+    <string name="feature_sign_body">Move-in and move-out only close when landlord and tenant agree.</string>
+    <string name="feature_report_title">Court-ready PDF</string>
+    <string name="feature_report_body">Export a full report with compare and dispute history.</string>
+    <string name="inspection_progress_label">Room progress</string>
+    <string name="finish_inspection">Finish inspection</string>
+    <string name="inspection_no_rooms">Add rooms in Room Setup before starting the inspection.</string>
+    <string name="join_property_hint">Enter the 6-character invite code from your landlord.</string>
+    <string name="join_property_code_hint">Codes expire when the property is closed.</string>
+    <string name="pull_to_refresh_hint">Pull down to refresh your list</string>
+    <string name="review_sign_intro">Review summary before signing:</string>
+    <string name="confirm_signature">Confirm signature</string>
+    <string name="review_sign_title">Sign move-in</string>
+    <string name="signature_yours">Your signature</string>
+    <string name="counter_evidence_placeholder">Counter-evidence photo</string>
+    <string name="capture_proof_title">Capture proof</string>
+    <string name="capture_metadata_format">GPS · %1$s · %2$s</string>
+    <string name="dashboard_empty_title">No properties yet</string>
+    <string name="dashboard_empty_subtitle">Use the + button to create a property as a landlord, or join one using an invite code as a tenant.</string>
+    <string name="new_property">Property</string>
+    <string name="create_property_landlord">Create property (Landlord)</string>
+    <string name="join_property_tenant">Join with code (Tenant)</string>
+
+    <!-- Property -->
+    <string name="hint_address">Address</string>
+    <string name="hint_rent">Monthly rent</string>
+    <string name="hint_deposit">Security deposit</string>
+    <string name="hint_lease_start">Lease start</string>
+    <string name="lease_start_hint">Lease start date</string>
+    <string name="lease_end_hint">Lease end date</string>
+    <string name="lease_end_before_start">Lease end must be after the start date.</string>
+    <string name="hint_lease_end">Lease end</string>
+    <string name="hint_invite_code">Invite code</string>
+    <string name="action_create_property">Create property</string>
+    <string name="action_join_property">Join property</string>
+
+    <!-- Property details -->
+    <string name="tile_rooms">Room setup &amp; checklist</string>
+    <string name="tile_move_in">Move-in inspection</string>
+    <string name="tile_move_out">Move-out inspection</string>
+    <string name="action_start_move_out">Start move-out inspection</string>
+    <string name="tile_compare">Side-by-side compare</string>
+    <string name="tile_disputes">Disputes</string>
+    <string name="tile_report">Final PDF report</string>
+    <string name="approval_pending_title">Tenant request pending</string>
+    <string name="approval_pending_body">A tenant has joined using your invite code. Approve to unlock inspections, or reject to free the property.</string>
+    <string name="action_approve">Approve</string>
+    <string name="action_reject">Reject</string>
+    <string name="awaiting_approval_title">Awaiting landlord approval</string>
+    <string name="awaiting_approval_body">Your join request has been sent. You\'ll be notified when the landlord approves.</string>
+    <string name="request_rejected_title">Request rejected</string>
+    <string name="request_rejected_body">Your join request was declined. Please coordinate with the landlord.</string>
+
+    <!-- Rooms -->
+    <string name="rooms_title">Room setup</string>
+    <string name="rooms_empty">No rooms yet. Tap + to add one.</string>
+    <string name="label_monthly_rent">Monthly rent</string>
+    <string name="label_deposit">Deposit</string>
+    <string name="label_lease">Lease</string>
+    <string name="toolbar_compare">Compare</string>
+    <string name="checklist_title">Checklist</string>
+    <string name="hint_room_name">New room name (e.g. Bedroom 1)</string>
+    <string name="hint_item_name">Item (e.g. Walls, Floor, Ceiling fan)</string>
+    <string name="rooms_locked">Inspection has begun — room structure is locked.</string>
+    <string name="checklist_add_item_hint">Add item (e.g. Wall paint)</string>
+    <string name="checklist_add_item">Add item</string>
+    <string name="checklist_locked">Inspection has begun — checklist is locked.</string>
+
+    <!-- Inspection -->
+    <string name="inspection_move_in_title">Move-in inspection</string>
+    <string name="inspection_move_out_title">Move-out inspection</string>
+    <string name="action_sign">Sign</string>
+    <string name="action_dispute">Dispute</string>
+    <string name="hint_notes">Add notes about the condition</string>
+    <string name="action_capture">Capture</string>
+    <string name="photos_count">Photos (%1$d)</string>
+    <string name="condition_rating">Condition rating</string>
+    <string name="rating_good">Good</string>
+    <string name="rating_fair">Fair</string>
+    <string name="rating_damaged">Damaged</string>
+
+    <!-- Photo capture -->
+    <string name="capture_title">Capture proof</string>
+    <string name="capture_hint">Frame your subject and tap the shutter.</string>
+    <string name="capture_shutter">Shutter</string>
+    <string name="capture_saving">Saving…</string>
+    <string name="capture_permission_message">We need camera (and ideally location) access to capture timestamped proof.</string>
+    <string name="capture_grant">Grant permissions</string>
+    <string name="capture_permission_denied">Camera permission is required to capture proof.</string>
+
+    <!-- Review &amp; sign -->
+    <string name="review_sign_move_in">Review &amp; sign — Move-in</string>
+    <string name="review_sign_move_out">Review &amp; sign — Move-out</string>
+    <string name="signature_clear">Clear</string>
+    <string name="signature_confirm">Confirm signature</string>
+    <string name="signature_locked">This record is locked — both parties have signed.</string>
+    <string name="agreed">Agreed</string>
+    <string name="disputed">Disputed</string>
+    <string name="dispute_this_item">Dispute this item</string>
+    <string name="compare_move_in">Move-in</string>
+    <string name="compare_move_out">Move-out</string>
+
+    <!-- Comparison -->
+    <string name="compare_title">Move-in vs Move-out</string>
+    <string name="damage_summary">Damage summary</string>
+    <string name="compare_summary_empty">No inspection data found.</string>
+    <string name="compare_summary_ok">No damage found — property returned in good condition.</string>
+    <string name="compare_summary_degraded">%1$d item(s) degraded since move-in.</string>
+    <string name="summary_unchanged">Unchanged</string>
+    <string name="summary_improved">Improved</string>
+    <string name="summary_degraded">Degraded</string>
+    <string name="rating_not_rated">Not rated</string>
+    <string name="value_dash">—</string>
+    <string name="degraded_items">Degraded items:</string>
+    <string name="review_disputes">Review disputes →</string>
+
+    <!-- Disputes -->
+    <string name="disputes_title">Disputes</string>
+    <string name="raise_dispute_title">Raise dispute</string>
+    <string name="hint_dispute_reason">Why is this disputed?</string>
+    <string name="dispute_reason_hint">Why is this disputed?</string>
+    <string name="dispute_raise_title">Raise dispute</string>
+    <string name="dispute_item_label">Item: %1$s</string>
+    <string name="dispute_attach_photo">Attach counter-evidence photo</string>
+    <string name="dispute_resolve">Resolve dispute</string>
+    <string name="hint_counter_note">Your counter-narrative (optional)</string>
+    <string name="hint_resolution_notes">Resolution notes</string>
+    <string name="action_mark_resolved">Mark resolved</string>
+    <string name="action_cannot_resolve">Cannot resolve</string>
+    <string name="action_submit_dispute">Submit dispute</string>
+    <string name="no_disputes_title">No disputes</string>
+    <string name="no_disputes_subtitle">Both parties are aligned — no action needed.</string>
+
+    <!-- Report -->
+    <string name="report_title">Inspection report</string>
+    <string name="report_compiling">Compiling PDF…</string>
+    <string name="report_ready">Report ready</string>
+    <string name="report_share_pdf">Share PDF</string>
+    <string name="report_regenerate">Regenerate</string>
+    <string name="report_could_not_generate">Could not generate report:</string>
+    <string name="report_final_title">Final report</string>
+    <string name="report_ready_title">Your report is ready</string>
+    <string name="report_ready_body">PDF includes photos, GPS, timestamps, and both signatures.</string>
+    <string name="report_preview">Preview report details</string>
+    <string name="report_generate_share">Generate &amp; share PDF</string>
+
+    <!-- Notifications -->
+    <string name="notifications_title">Notifications</string>
+    <string name="nav_alerts">Alerts</string>
+    <string name="notifications_empty_title">All caught up</string>
+    <string name="notifications_empty_subtitle">You\'ll see lease, inspection, and dispute events here.</string>
+    <string name="action_mark_all_read">Mark all read</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_section_details">Profile details</string>
+    <string name="profile_section_about">About ProofNest</string>
+    <string name="profile_version">Version</string>
+    <string name="profile_build">Build</string>
+    <string name="action_save_changes">Save changes</string>
+    <string name="profile_saved">Saved.</string>
+</resources>
