@@ -1,13 +1,32 @@
 {
   "project_info": {
-    "project_number": "77809403694",
-    "project_id": "dispute-documenter",
-    "storage_bucket": "dispute-documenter.firebasestorage.app"
+    "project_number": "406543510515",
+    "project_id": "testproject-a9929",
+    "storage_bucket": "testproject-a9929.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:77809403694:android:1a7eb71a59b061cfc0dcbf",
+        "mobilesdk_app_id": "1:406543510515:android:abdf40febe121043700086",
+        "android_client_info": {
+          "package_name": "com.example.quiz2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKhqOsfsUv6AtFjz9qGitRFc04oODAezQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:406543510515:android:3a9d75ce2e9ccc6a700086",
         "android_client_info": {
           "package_name": "com.example.tenant_landlorddisputedocumenter"
         }
@@ -15,7 +34,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD_sjXNCXWKDqL4DINWV4qghimNFTocWUA"
+          "current_key": "AIzaSyAKhqOsfsUv6AtFjz9qGitRFc04oODAezQ"
         }
       ],
       "services": {

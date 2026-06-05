@@ -12,9 +12,9 @@ import com.example.tenant_landlorddisputedocumenter.data.repository.InspectionRe
 import com.example.tenant_landlorddisputedocumenter.data.repository.NotificationRepository
 import com.example.tenant_landlorddisputedocumenter.data.repository.PropertyRepository
 import com.example.tenant_landlorddisputedocumenter.data.repository.ReportRepository
+import com.example.tenant_landlorddisputedocumenter.data.remote.CloudinaryUploader
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 
 /**
  * Lightweight service locator. Lives on the [com.example.tenant_landlorddisputedocumenter.ProofNestApplication]
@@ -34,7 +34,7 @@ class ServiceContainer(context: Context) {
     val db: ProofNestDatabase by lazy { ProofNestDatabase.get(appContext) }
     val firebaseAuth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
     val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
-    val firebaseStorage: FirebaseStorage by lazy { FirebaseStorage.getInstance() }
+    val cloudinary: CloudinaryUploader by lazy { CloudinaryUploader() }
 
     val authRepository: AuthRepository by lazy {
         AuthRepository(firebaseAuth, firestore, db.userDao(), repositoryScope)
@@ -46,7 +46,7 @@ class ServiceContainer(context: Context) {
             db.itemDao(),
             db.photoDao(),
             db.signatureDao(),
-            firebaseStorage,
+            cloudinary,
             notificationRepository,
             firestore,
         )

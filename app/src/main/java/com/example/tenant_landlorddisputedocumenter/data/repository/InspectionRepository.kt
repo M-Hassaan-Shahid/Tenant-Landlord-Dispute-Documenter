@@ -23,9 +23,9 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.Photo
 import com.example.tenant_landlorddisputedocumenter.domain.model.Signature
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
 import com.example.tenant_landlorddisputedocumenter.util.Ids
+import com.example.tenant_landlorddisputedocumenter.data.remote.CloudinaryUploader
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
@@ -38,7 +38,7 @@ class InspectionRepository(
     private val itemDao: ItemDao,
     private val photoDao: PhotoDao,
     private val signatureDao: SignatureDao,
-    private val firebaseStorage: FirebaseStorage,
+    private val cloudinary: CloudinaryUploader,
     private val notificationRepository: NotificationRepository,
     private val firestore: FirebaseFirestore,
 ) {
@@ -186,11 +186,11 @@ class InspectionRepository(
             val localUri = entity.localUri ?: continue
             val file = File(localUri.removePrefix("file://"))
             if (!file.exists()) continue
-            val ref = firebaseStorage.reference
-                .child("photos/${entity.propertyId}/${entity.itemId}/${entity.id}.jpg")
             runCatching {
-                ref.putFile(android.net.Uri.fromFile(file)).await()
-                val url = ref.downloadUrl.await().toString()
+                val url = cloudinary.upload(
+                    file,
+                    folder = "photos/${entity.propertyId}/${entity.itemId}",
+                )
                 val updated = entity.copy(remoteUrl = url, uploaded = true)
                 photoDao.upsert(updated)
 
@@ -339,11 +339,9 @@ class InspectionRepository(
         val bytes = Base64.decode(signature.pngBase64, Base64.DEFAULT)
         val file = File(context.cacheDir, "sig_upload_${signature.id}.png")
         file.writeBytes(bytes)
-        val ref = firebaseStorage.reference
-            .child("signatures/${signature.propertyId}/${signature.id}.png")
-        ref.putFile(android.net.Uri.fromFile(file)).await()
+        val url = cloudinary.upload(file, folder = "signatures/${signature.propertyId}")
         file.delete()
-        return ref.downloadUrl.await().toString()
+        return url
     }
 
     private suspend fun commitBatchedDeletes(refs: List<DocumentReference>) {
