@@ -46,6 +46,8 @@
     <color name="info_banner_text">#5D4037</color>
     <color name="approval_banner_bg">#FFF8E1</color>
     <color name="approval_banner_text">#3E2723</color>
+    <color name="compare_banner_title">#3E2723</color>
+    <color name="compare_banner_body">#5D4037</color>
     <color name="compare_summary_stroke">#E8C04A</color>
     <color name="camera_metadata_scrim">#80000000</color>
     <color name="camera_bar_scrim">#99000000</color>

@@ -40,6 +40,8 @@
     <color name="info_banner_text">#FFE0B2</color>
     <color name="approval_banner_bg">#5C4A1A</color>
     <color name="approval_banner_text">#FFE082</color>
+    <color name="compare_banner_title">#FFE082</color>
+    <color name="compare_banner_body">#FFCC80</color>
     <color name="compare_summary_stroke">#FFB300</color>
     <color name="toolbar_nav_circle_bg">#33FFFFFF</color>
 </resources>

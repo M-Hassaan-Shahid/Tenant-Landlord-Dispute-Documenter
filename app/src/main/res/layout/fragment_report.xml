@@ -29,7 +29,8 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:padding="@dimen/content_padding">
+            android:padding="@dimen/content_padding"
+            android:paddingBottom="@dimen/bottom_content_padding">
 
             <FrameLayout
                 android:layout_width="88dp"
