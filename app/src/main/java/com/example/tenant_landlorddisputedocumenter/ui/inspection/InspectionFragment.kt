@@ -17,13 +17,17 @@ import com.example.tenant_landlorddisputedocumenter.navigation.InspectionFragmen
 import com.example.tenant_landlorddisputedocumenter.navigation.InspectionFragmentDirections
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentInspectionBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class InspectionFragment : Fragment() {
 
     private var _binding: FragmentInspectionBinding? = null
     private val binding get() = _binding!!
+    private var hasRooms = false
+    private var isSubmitting = false
 
     private val args: InspectionFragmentArgs by lazy {
         InspectionFragmentArgs.fromBundle(requireArguments())
@@ -51,8 +55,18 @@ class InspectionFragment : Fragment() {
 
         val appContainer = (requireActivity().application as ProofNestApplication).container
         viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { appContainer.syncCoordinator.refreshPropertyData(propertyId) }
+            val property = appContainer.propertyRepository.observeProperty(propertyId).first()
+            val uid = appContainer.authRepository.currentUserId.value
+            if (property != null && uid != null && property.tenantId == uid) {
+                val message = when (phase) {
+                    InspectionPhase.MOVE_IN -> getString(R.string.finish_inspection_landlord_only)
+                    InspectionPhase.MOVE_OUT -> getString(R.string.finish_inspection_move_out_landlord_only)
+                }
+                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                findNavController().navigateUp()
+            }
         }
+        refreshPropertyInBackground(propertyId)
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
         binding.toolbar.title = if (phase == InspectionPhase.MOVE_OUT) {
@@ -87,10 +101,11 @@ class InspectionFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.rooms.collect { rooms ->
-                    val hasRooms = rooms.isNotEmpty()
+                    hasRooms = rooms.isNotEmpty()
                     binding.viewPagerRooms.visibility = if (hasRooms) View.VISIBLE else View.GONE
                     binding.tabLayoutRooms.visibility = if (hasRooms) View.VISIBLE else View.GONE
-                    binding.buttonFinishInspection.isEnabled = hasRooms
+                    binding.buttonFinishInspection.visibility = View.VISIBLE
+                    updateFinishButton()
                     if (!hasRooms) {
                         Toast.makeText(
                             requireContext(),
@@ -111,6 +126,8 @@ class InspectionFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
+                    isSubmitting = state.isLoading
+                    updateFinishButton()
                     state.error?.let {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearError()
@@ -123,6 +140,15 @@ class InspectionFragment : Fragment() {
                     }
                 }
             }
+        }
+    }
+
+    private fun updateFinishButton() {
+        binding.buttonFinishInspection.isEnabled = hasRooms && !isSubmitting
+        binding.buttonFinishInspection.text = if (isSubmitting) {
+            getString(R.string.finish_inspection_saving)
+        } else {
+            getString(R.string.finish_inspection)
         }
     }
 

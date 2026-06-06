@@ -45,8 +45,10 @@
     </style>
 
     <style name="Widget.ProofNest.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
-        <item name="itemIconSize">24dp</item>
+        <item name="android:minHeight">@dimen/bottom_nav_height</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="itemIconSize">22dp</item>
         <item name="itemPaddingTop">4dp</item>
-        <item name="itemPaddingBottom">4dp</item>
+        <item name="itemPaddingBottom">2dp</item>
     </style>
 </resources>

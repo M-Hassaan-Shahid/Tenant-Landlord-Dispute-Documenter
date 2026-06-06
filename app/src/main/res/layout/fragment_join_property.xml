@@ -9,13 +9,13 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary">
+        android:background="@android:color/transparent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             style="@style/Widget.ProofNest.Toolbar.Back"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/toolbar_content_height"
             app:title="@string/action_join_property" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -63,7 +63,7 @@
                 android:id="@+id/buttonJoin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="@dimen/footer_button_margin_top"
                 android:text="@string/action_join_property" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

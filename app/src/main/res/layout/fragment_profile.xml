@@ -9,13 +9,13 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary">
+        android:background="@android:color/transparent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             style="@style/Widget.ProofNest.Toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/toolbar_content_height"
             app:title="@string/profile_title" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -27,21 +27,48 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
             android:orientation="vertical"
             android:padding="@dimen/content_padding"
             android:paddingBottom="@dimen/bottom_content_padding">
 
-            <TextView
-                android:id="@+id/textAvatar"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
-                android:layout_gravity="center_horizontal"
+            <FrameLayout
+                android:id="@+id/frameAvatar"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
                 android:background="@drawable/bg_profile_avatar"
-                android:gravity="center"
-                android:textAppearance="?attr/textAppearanceHeadlineSmall"
-                android:textColor="@color/white"
-                android:textStyle="bold"
-                tools:text="HA" />
+                android:clickable="true"
+                android:contentDescription="@string/profile_change_photo"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/imageAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/textAvatar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                    android:textColor="@color/white"
+                    android:textStyle="bold"
+                    tools:text="HA" />
+            </FrameLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonChangePhoto"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/profile_change_photo"
+                android:textColor="@color/proofnest_primary" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -131,8 +158,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/action_sign_out"
-                android:textColor="?attr/colorError"
-                app:strokeColor="?attr/colorError" />
+                android:textColor="@color/proofnest_error"
+                app:strokeColor="@color/proofnest_error" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

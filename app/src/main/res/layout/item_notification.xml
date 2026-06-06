@@ -19,7 +19,7 @@
             android:id="@+id/unreadAccent"
             android:layout_width="4dp"
             android:layout_height="0dp"
-            android:background="@color/proofnest_primary"
+            android:background="@color/notif_unread_accent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -37,7 +37,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@id/unreadAccent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="@color/proofnest_primary"
+            app:tint="@color/notif_icon_tint"
             tools:src="@drawable/ic_edit" />
 
         <LinearLayout

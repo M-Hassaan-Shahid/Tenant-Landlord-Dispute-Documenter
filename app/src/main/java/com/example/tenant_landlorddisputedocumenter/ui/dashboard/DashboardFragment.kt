@@ -14,7 +14,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentDashboardBinding
+import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
 import com.example.tenant_landlorddisputedocumenter.navigation.DashboardFragmentDirections
+import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyRoleUi
 import android.widget.Toast
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -55,7 +57,12 @@ class DashboardFragment : Fragment() {
 
         binding.swipeRefresh.setColorSchemeResources(R.color.proofnest_primary)
         binding.swipeRefresh.setOnRefreshListener {
-            viewModel.sync()
+            viewModel.sync(force = true)
+        }
+        binding.toolbar.post {
+            val toolbarBottom = binding.toolbar.bottom
+            val offsetEnd = toolbarBottom + (48 * resources.displayMetrics.density).toInt()
+            binding.swipeRefresh.setProgressViewOffset(false, toolbarBottom, offsetEnd)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -85,6 +92,11 @@ class DashboardFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 container.authRepository.currentUserRole.collect { role ->
                     binding.fabAdd.isEnabled = role != null
+                    val isLandlord = role == UserRole.LANDLORD
+                    if (role != null) {
+                        binding.fabAdd.contentDescription = getString(PropertyRoleUi.dashboardFabActionRes(isLandlord))
+                        binding.textEmptySubtitle.text = getString(PropertyRoleUi.dashboardEmptySubtitleRes(isLandlord))
+                    }
                 }
             }
         }
@@ -105,11 +117,16 @@ class DashboardFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(
                     container.authRepository.observeCurrentProfile(),
+                    container.authRepository.currentUserRole,
                     viewModel.properties,
                     container.notificationRepository.observeUnreadCount(currentUserId),
-                ) { user, props, unread ->
-                    Triple(user, props, unread)
-                }.collect { (user, props, unread) ->
+                ) { user, role, props, unread ->
+                    RoleDashboardState(user, role, props, unread)
+                }.collect { state ->
+                    val user = state.user
+                    val role = state.role
+                    val props = state.properties
+                    val unread = state.unread
                     val firstName = user?.displayName?.substringBefore(' ')?.ifBlank { "there" } ?: "there"
                     val greeting = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
                         in 5..11 -> "Good morning"
@@ -118,15 +135,28 @@ class DashboardFragment : Fragment() {
                         else -> "Hello"
                     }
                     binding.textWelcomeTitle.text = "$greeting, $firstName"
-                    binding.textWelcomeSubtitle.text = if (unread > 0) {
+                    val roleLine = when (role) {
+                        UserRole.LANDLORD -> getString(R.string.dashboard_role_landlord)
+                        UserRole.TENANT -> getString(R.string.dashboard_role_tenant)
+                        null -> ""
+                    }
+                    val countLine = if (unread > 0) {
                         getString(R.string.dashboard_welcome_subtitle, props.size, unread)
                     } else {
-                        getString(R.string.dashboard_welcome_subtitle_none, props.size)
+                        resources.getQuantityString(R.plurals.dashboard_property_count, props.size, props.size)
                     }
+                    binding.textWelcomeSubtitle.text = if (roleLine.isBlank()) countLine else "$roleLine · $countLine"
                 }
             }
         }
     }
+
+    private data class RoleDashboardState(
+        val user: com.example.tenant_landlorddisputedocumenter.domain.model.User?,
+        val role: UserRole?,
+        val properties: List<com.example.tenant_landlorddisputedocumenter.domain.model.Property>,
+        val unread: Int,
+    )
 
     override fun onDestroyView() {
         super.onDestroyView()

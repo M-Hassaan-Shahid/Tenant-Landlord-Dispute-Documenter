@@ -96,6 +96,21 @@ class InspectionViewModel(
         val propertyId = _propertyId.value ?: return
         val uid = authRepository.currentUserId.value ?: return
         val phase = _uiState.value.phase
+        viewModelScope.launch {
+            val property = propertyRepository.observeProperty(propertyId).first()
+            if (property == null || property.landlordId != uid) {
+                val message = when (phase) {
+                    InspectionPhase.MOVE_IN -> "Only the landlord can submit the move-in inspection."
+                    InspectionPhase.MOVE_OUT -> "Only the landlord can submit the move-out inspection."
+                }
+                _uiState.update { it.copy(error = message) }
+                return@launch
+            }
+            submitInspection(propertyId, uid, phase)
+        }
+    }
+
+    private fun submitInspection(propertyId: String, uid: String, phase: InspectionPhase) {
         if (rooms.value.isEmpty()) {
             _uiState.update { it.copy(error = "Add at least one room in Room Setup before inspecting.") }
             return
@@ -113,8 +128,12 @@ class InspectionViewModel(
             return
         }
         viewModelScope.launch {
-            when (val submitted = propertyRepository.markInspectionSubmitted(propertyId, phase)) {
-                is Outcome.Failure -> _uiState.update { it.copy(error = submitted.userMessage) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            when (val submitted = propertyRepository.markInspectionSubmitted(propertyId, phase, uid)) {
+                is Outcome.Failure -> {
+                    _uiState.update { it.copy(isLoading = false, error = submitted.userMessage) }
+                    return@launch
+                }
                 is Outcome.Success -> Unit
             }
             val notifyResult = runCatching {
@@ -128,18 +147,30 @@ class InspectionViewModel(
                     notificationRepository.push(
                         recipientUid = it,
                         type = NotificationType.INSPECTION_SUBMITTED,
-                        title = "Inspection ready to sign",
-                        body = "Your counterpart finished documenting. Please review and sign.",
+                        title = if (phase == InspectionPhase.MOVE_IN) {
+                            "Move-in ready for tenant review"
+                        } else {
+                            "Move-out ready for tenant review"
+                        },
+                        body = if (phase == InspectionPhase.MOVE_IN) {
+                            "The landlord finished documenting move-in. Please review and sign."
+                        } else {
+                            "The landlord finished documenting move-out. Please review and sign."
+                        },
                         propertyId = propertyId,
                     )
                 }
             }
             if (notifyResult.isFailure) {
                 _uiState.update {
-                    it.copy(error = notifyResult.exceptionOrNull()?.localizedMessage ?: "Could not notify the other party.")
+                    it.copy(
+                        isLoading = false,
+                        error = notifyResult.exceptionOrNull()?.localizedMessage ?: "Could not notify the other party.",
+                    )
                 }
+                return@launch
             }
-            _uiState.update { it.copy(isFinished = true) }
+            _uiState.update { it.copy(isLoading = false, isFinished = true) }
         }
     }
 

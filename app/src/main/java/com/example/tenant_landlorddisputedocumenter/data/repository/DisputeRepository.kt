@@ -1,5 +1,6 @@
 package com.example.tenant_landlorddisputedocumenter.data.repository
 
+import com.example.tenant_landlorddisputedocumenter.data.SyncCache
 import com.example.tenant_landlorddisputedocumenter.data.SyncResult
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.DisputeDao
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.DisputeEntity
@@ -18,6 +19,7 @@ import kotlinx.coroutines.tasks.await
 class DisputeRepository(
     private val disputeDao: DisputeDao,
     private val firestore: FirebaseFirestore,
+    private val syncCache: SyncCache,
 ) {
     fun observeForProperty(propertyId: String): Flow<List<Dispute>> =
         disputeDao.observeForProperty(propertyId).map { list -> list.map { it.toDomain() } }
@@ -71,6 +73,7 @@ class DisputeRepository(
     )
 
     private suspend fun pushDispute(dispute: Dispute) {
+        syncCache.invalidateProperty(dispute.propertyId)
         firestoreWrite("dispute") {
             firestore.collection(FirestorePaths.DISPUTES).document(dispute.id)
                 .set(dispute.toFirestoreMap()).await()

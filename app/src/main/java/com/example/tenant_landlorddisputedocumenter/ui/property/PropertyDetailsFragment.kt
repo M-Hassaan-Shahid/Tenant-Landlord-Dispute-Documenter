@@ -20,8 +20,15 @@ import com.example.tenant_landlorddisputedocumenter.navigation.PropertyDetailsFr
 import com.example.tenant_landlorddisputedocumenter.navigation.PropertyDetailsFragmentDirections
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentPropertyDetailsBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.domain.model.Property
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
+import com.example.tenant_landlorddisputedocumenter.domain.model.Signature
+import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
+import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyPrimaryAction
+import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyRoleUi
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyStatusUi
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class PropertyDetailsFragment : Fragment() {
@@ -51,9 +58,7 @@ class PropertyDetailsFragment : Fragment() {
         val propertyId = args.propertyId
         viewModel.loadProperty(propertyId)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { appContainer.syncCoordinator.refreshPropertyData(propertyId) }
-        }
+        refreshPropertyInBackground(propertyId)
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
 
@@ -64,7 +69,11 @@ class PropertyDetailsFragment : Fragment() {
         }
 
         binding.buttonInspection.setOnClickListener {
-            navigateToInspection(propertyId, viewModel.inspectionPhase.value)
+            navigateToInspection(propertyId, currentInspectionPhase())
+        }
+
+        binding.buttonReviewSign.setOnClickListener {
+            navigateToReviewSign(propertyId, currentInspectionPhase())
         }
 
         binding.buttonStartMoveOut.setOnClickListener {
@@ -105,58 +114,35 @@ class PropertyDetailsFragment : Fragment() {
             }, 1600L)
         }
 
+        val inspectionRepo = appContainer.inspectionRepository
+        val authRepo = appContainer.authRepository
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.property.collect { property ->
-                    if (property == null) return@collect
-                    binding.textAddress.text = property.address
-                    PropertyStatusUi.apply(binding.chipStatus, property.status)
-                    binding.textRent.text = "PKR ${property.rent.toInt()}"
-                    binding.textDeposit.text = "PKR ${property.deposit.toInt()}"
-                    binding.textInviteCode.text = property.inviteCode
-
-                    val start = com.example.tenant_landlorddisputedocumenter.util.DateUtils.formatReadable(property.leaseStartMillis)
-                    val end = com.example.tenant_landlorddisputedocumenter.util.DateUtils.formatReadable(property.leaseEndMillis)
-                    binding.textLeaseDates.text = "$start - $end"
-
-                    val currentUser = appContainer.authRepository.currentUserId.value
-                    val isLandlord = property.landlordId == currentUser
-
-                    binding.cardInvite.visibility = if (isLandlord) View.VISIBLE else View.GONE
-                    binding.cardApproval.visibility =
-                        if (isLandlord && property.status == PropertyStatus.PENDING_APPROVAL) View.VISIBLE else View.GONE
-
-                    val isTenant = property.tenantId == currentUser
-                    binding.cardTenantPending.visibility =
-                        if (isTenant && property.status == PropertyStatus.PENDING_APPROVAL) View.VISIBLE else View.GONE
-
-                    binding.buttonRoomSetup.visibility =
-                        if (property.status == PropertyStatus.ACTIVE) View.VISIBLE else View.GONE
-
-                    val inspectionPhase = when (property.status) {
-                        PropertyStatus.ACTIVE -> InspectionPhase.MOVE_IN
-                        PropertyStatus.MOVE_OUT -> InspectionPhase.MOVE_OUT
-                        else -> viewModel.inspectionPhase.value
-                    }
-                    viewModel.setInspectionPhase(inspectionPhase)
-
-                    binding.buttonInspection.visibility = when (property.status) {
-                        PropertyStatus.ACTIVE, PropertyStatus.MOVE_OUT -> View.VISIBLE
-                        else -> View.GONE
-                    }
-                    binding.buttonInspection.text = when (property.status) {
-                        PropertyStatus.MOVE_OUT -> getString(R.string.tile_move_out)
-                        else -> getString(R.string.tile_move_in)
-                    }
-
-                    binding.buttonStartMoveOut.visibility =
-                        if (isLandlord && property.status == PropertyStatus.OCCUPIED) View.VISIBLE else View.GONE
-
-                    val showCompareAndReport = property.status == PropertyStatus.MOVE_OUT ||
-                        property.status == PropertyStatus.CLOSED
-                    binding.buttonCompare.visibility = if (showCompareAndReport) View.VISIBLE else View.GONE
-                    binding.buttonReport.visibility = if (showCompareAndReport) View.VISIBLE else View.GONE
-                    binding.buttonDisputes.visibility = if (showCompareAndReport) View.VISIBLE else View.GONE
+                combine(
+                    combine(
+                        viewModel.property,
+                        inspectionRepo.observeSignatures(propertyId, InspectionPhase.MOVE_IN),
+                        inspectionRepo.observeSignatures(propertyId, InspectionPhase.MOVE_OUT),
+                        authRepo.currentUserId,
+                        inspectionRepo.observeRooms(propertyId).map { it.isNotEmpty() },
+                    ) { property, moveInSigs, moveOutSigs, uid, hasRooms ->
+                        RoleUiInput(property, moveInSigs, moveOutSigs, uid, hasRooms, hasDisputes = false)
+                    },
+                    appContainer.disputeRepository.observeForProperty(propertyId).map { it.isNotEmpty() },
+                ) { input, hasDisputes ->
+                    input.copy(hasDisputes = hasDisputes)
+                }.collect { input ->
+                    val property = input.property ?: return@collect
+                    renderPropertyBasics(property, input.uid)
+                    renderRoleActions(
+                        property,
+                        input.uid,
+                        input.moveInSigs,
+                        input.moveOutSigs,
+                        input.hasRooms,
+                        input.hasDisputes,
+                    )
                 }
             }
         }
@@ -164,6 +150,10 @@ class PropertyDetailsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
+                    val busy = state.isLoading
+                    binding.buttonApprove.isEnabled = !busy
+                    binding.buttonReject.isEnabled = !busy
+                    binding.buttonStartMoveOut.isEnabled = !busy
                     state.error?.let {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearMessages()
@@ -177,9 +167,154 @@ class PropertyDetailsFragment : Fragment() {
         }
     }
 
+    private fun shouldShowInviteCard(isLandlord: Boolean, property: Property): Boolean {
+        if (!isLandlord) return false
+        return when (property.status) {
+            PropertyStatus.PENDING, PropertyStatus.REJECTED -> true
+            else -> false
+        }
+    }
+
+    private fun renderPropertyBasics(property: Property, currentUser: String?) {
+        binding.textAddress.text = property.address
+        PropertyStatusUi.apply(binding.chipStatus, property.status)
+        binding.textRent.text = "PKR ${property.rent.toInt()}"
+        binding.textDeposit.text = "PKR ${property.deposit.toInt()}"
+        binding.textInviteCode.text = property.inviteCode
+
+        val start = com.example.tenant_landlorddisputedocumenter.util.DateUtils.formatReadable(property.leaseStartMillis)
+        val end = com.example.tenant_landlorddisputedocumenter.util.DateUtils.formatReadable(property.leaseEndMillis)
+        binding.textLeaseDates.text = "$start - $end"
+
+        val isLandlord = property.landlordId == currentUser
+        binding.cardInvite.visibility =
+            if (shouldShowInviteCard(isLandlord, property)) View.VISIBLE else View.GONE
+
+        if (property.status == PropertyStatus.CLOSED) {
+            binding.textFinancialsTitle.setText(R.string.label_financials)
+            binding.textFinancialsSubtitle.visibility = View.VISIBLE
+            binding.textFinancialsSubtitle.setText(R.string.financials_closed_subtitle)
+        } else {
+            binding.textFinancialsTitle.setText(R.string.label_financials)
+            binding.textFinancialsSubtitle.visibility = View.GONE
+        }
+        binding.cardApproval.visibility =
+            if (isLandlord && property.status == PropertyStatus.PENDING_APPROVAL) View.VISIBLE else View.GONE
+
+        val isTenant = property.tenantId == currentUser
+        binding.cardTenantPending.visibility =
+            if (isTenant && property.status == PropertyStatus.PENDING_APPROVAL) View.VISIBLE else View.GONE
+    }
+
+    private fun renderRoleActions(
+        property: Property,
+        currentUser: String?,
+        moveInSigs: List<Signature>,
+        moveOutSigs: List<Signature>,
+        hasRooms: Boolean,
+        hasDisputes: Boolean,
+    ) {
+        val inspectionPhase = when (property.status) {
+            PropertyStatus.ACTIVE -> InspectionPhase.MOVE_IN
+            PropertyStatus.MOVE_OUT -> InspectionPhase.MOVE_OUT
+            else -> viewModel.inspectionPhase.value
+        }
+        viewModel.setInspectionPhase(inspectionPhase)
+
+        val roleState = PropertyRoleUi.resolve(
+            property,
+            currentUser,
+            moveInSigs,
+            moveOutSigs,
+            hasRooms,
+            hasDisputes,
+        )
+        if (roleState == null) {
+            binding.cardRoleBanner.visibility = View.GONE
+            hideAllActionButtons()
+            return
+        }
+
+        binding.cardRoleBanner.visibility = View.VISIBLE
+        binding.textRoleBannerTitle.setText(roleState.roleBannerTitleRes)
+        binding.textRoleBannerBody.setText(roleState.roleBannerBodyRes)
+
+        val actions = roleState.actions
+        binding.buttonRoomSetup.visibility =
+            if (PropertyPrimaryAction.ROOM_SETUP in actions) View.VISIBLE else View.GONE
+
+        binding.buttonInspection.visibility =
+            if (PropertyPrimaryAction.DOCUMENT_MOVE_IN in actions ||
+                PropertyPrimaryAction.DOCUMENT_MOVE_OUT in actions
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        binding.buttonInspection.text = when {
+            PropertyPrimaryAction.DOCUMENT_MOVE_OUT in actions ->
+                getString(R.string.tile_document_move_out)
+            else -> getString(R.string.tile_document_move_in)
+        }
+
+        binding.buttonReviewSign.visibility =
+            if (PropertyPrimaryAction.REVIEW_SIGN_MOVE_IN in actions ||
+                PropertyPrimaryAction.REVIEW_SIGN_MOVE_OUT in actions
+            ) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+        binding.buttonReviewSign.text = when {
+            PropertyPrimaryAction.REVIEW_SIGN_MOVE_OUT in actions ->
+                getString(R.string.tile_review_sign_move_out)
+            else -> getString(R.string.tile_review_sign_move_in)
+        }
+
+        binding.cardWaitingLandlord.visibility =
+            if (PropertyPrimaryAction.WAITING_LANDLORD_DOCUMENT in actions) View.VISIBLE else View.GONE
+        roleState.waitingCardTitleRes?.let { binding.textWaitingTitle.setText(it) }
+        roleState.waitingCardBodyRes?.let { binding.textWaitingBody.setText(it) }
+
+        binding.buttonStartMoveOut.visibility =
+            if (PropertyPrimaryAction.START_MOVE_OUT in actions) View.VISIBLE else View.GONE
+
+        binding.buttonCompare.visibility =
+            if (PropertyPrimaryAction.VIEW_COMPARE in actions) View.VISIBLE else View.GONE
+        binding.buttonReport.visibility =
+            if (PropertyPrimaryAction.VIEW_REPORT in actions) View.VISIBLE else View.GONE
+        binding.buttonDisputes.visibility =
+            if (PropertyPrimaryAction.VIEW_DISPUTES in actions) View.VISIBLE else View.GONE
+        binding.buttonDisputes.text = if (property.status == PropertyStatus.CLOSED) {
+            getString(R.string.tile_dispute_history)
+        } else {
+            getString(R.string.tile_disputes)
+        }
+    }
+
+    private fun hideAllActionButtons() {
+        binding.buttonRoomSetup.visibility = View.GONE
+        binding.buttonInspection.visibility = View.GONE
+        binding.buttonReviewSign.visibility = View.GONE
+        binding.cardWaitingLandlord.visibility = View.GONE
+        binding.buttonStartMoveOut.visibility = View.GONE
+        binding.buttonCompare.visibility = View.GONE
+        binding.buttonReport.visibility = View.GONE
+        binding.buttonDisputes.visibility = View.GONE
+    }
+
+    private fun currentInspectionPhase(): InspectionPhase =
+        viewModel.inspectionPhase.value
+
     private fun navigateToInspection(propertyId: String, phase: InspectionPhase) {
         findNavController().navigate(
             PropertyDetailsFragmentDirections.actionPropertyDetailsToInspection(propertyId, phase.name),
+        )
+    }
+
+    private fun navigateToReviewSign(propertyId: String, phase: InspectionPhase) {
+        findNavController().navigate(
+            PropertyDetailsFragmentDirections.actionPropertyDetailsToReviewSign(propertyId, phase.name),
         )
     }
 
@@ -187,4 +322,13 @@ class PropertyDetailsFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+
+    private data class RoleUiInput(
+        val property: Property?,
+        val moveInSigs: List<Signature>,
+        val moveOutSigs: List<Signature>,
+        val uid: String?,
+        val hasRooms: Boolean,
+        val hasDisputes: Boolean,
+    )
 }

@@ -69,12 +69,25 @@
                     tools:text="Good" />
 
                 <FrameLayout
+                    android:id="@+id/frameMoveInPhoto"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="52dp"
                     android:layout_marginTop="6dp"
-                    android:background="@drawable/bg_photo_placeholder">
+                    android:background="@drawable/bg_photo_placeholder"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
+                        android:id="@+id/imageMoveInThumb"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="@string/action_capture"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+                    <ImageView
+                        android:id="@+id/iconMoveInPlaceholder"
                         android:layout_width="28dp"
                         android:layout_height="28dp"
                         android:layout_gravity="center"
@@ -119,12 +132,25 @@
                     tools:text="Damaged" />
 
                 <FrameLayout
+                    android:id="@+id/frameMoveOutPhoto"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="52dp"
                     android:layout_marginTop="6dp"
-                    android:background="@drawable/bg_photo_placeholder">
+                    android:background="@drawable/bg_photo_placeholder"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
+                        android:id="@+id/imageMoveOutThumb"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="@string/action_capture"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+                    <ImageView
+                        android:id="@+id/iconMoveOutPlaceholder"
                         android:layout_width="28dp"
                         android:layout_height="28dp"
                         android:layout_gravity="center"

@@ -9,13 +9,13 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary">
+        android:background="@android:color/transparent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             style="@style/Widget.ProofNest.Toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/toolbar_content_height"
             app:menu="@menu/menu_notifications"
             app:title="@string/nav_alerts" />
     </com.google.android.material.appbar.AppBarLayout>
@@ -45,7 +45,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/ic_notifications"
-            app:tint="@color/proofnest_on_surface_muted" />
+            app:tint="@color/notif_icon_tint" />
 
         <TextView
             android:id="@+id/textEmptyTitle"

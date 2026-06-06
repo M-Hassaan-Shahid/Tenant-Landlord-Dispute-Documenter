@@ -26,6 +26,8 @@ import com.example.tenant_landlorddisputedocumenter.util.Ids
 import com.example.tenant_landlorddisputedocumenter.data.remote.CloudinaryUploader
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
@@ -286,22 +288,31 @@ class InspectionRepository(
     }
 
     suspend fun syncForProperty(propertyId: String): SyncResult = runCatching {
-            // Sync Rooms
-            val roomsSnap = firestore.collection(FirestorePaths.ROOMS)
-                .whereEqualTo("propertyId", propertyId).get().await()
-            val rooms = roomsSnap.documents.map { it.toRoom() }
+        coroutineScope {
+            val roomsDeferred = async {
+                firestore.collection(FirestorePaths.ROOMS)
+                    .whereEqualTo("propertyId", propertyId).get().await()
+            }
+            val itemsDeferred = async {
+                firestore.collection(FirestorePaths.ITEMS)
+                    .whereEqualTo("propertyId", propertyId).get().await()
+            }
+            val sigsDeferred = async {
+                firestore.collection(FirestorePaths.SIGNATURES)
+                    .whereEqualTo("propertyId", propertyId).get().await()
+            }
+            val photosDeferred = async {
+                firestore.collection(FirestorePaths.PHOTOS)
+                    .whereEqualTo("propertyId", propertyId).get().await()
+            }
+
+            val rooms = roomsDeferred.await().documents.map { it.toRoom() }
             roomDao.upsertAll(rooms.map(RoomEntity::from))
 
-            // Sync Items
-            val itemsSnap = firestore.collection(FirestorePaths.ITEMS)
-                .whereEqualTo("propertyId", propertyId).get().await()
-            val items = itemsSnap.documents.map { it.toItem() }
+            val items = itemsDeferred.await().documents.map { it.toItem() }
             itemDao.upsertAll(items.map(ItemEntity::from))
-            
-            // Sync Signatures
-            val sigsSnap = firestore.collection(FirestorePaths.SIGNATURES)
-                .whereEqualTo("propertyId", propertyId).get().await()
-            val sigs = sigsSnap.documents.map { it.toSignature() }
+
+            val sigs = sigsDeferred.await().documents.map { it.toSignature() }
             val sigEntities = sigs.map { sig ->
                 val existing = signatureDao.listForProperty(propertyId).find { it.id == sig.id }
                 val png = when {
@@ -312,24 +323,18 @@ class InspectionRepository(
                 SignatureEntity.from(sig.copy(pngBase64 = png))
             }
             signatureDao.upsertAll(sigEntities)
-            
-            // Sync Photos Metadata
-            val photosSnap = firestore.collection(FirestorePaths.PHOTOS)
-                .whereEqualTo("propertyId", propertyId).get().await()
-            val photos = photosSnap.documents.map { it.toPhoto() }
+
+            val photos = photosDeferred.await().documents.map { it.toPhoto() }
             val remotePhotoIds = photos.map { it.id }.toSet()
-            // Only drop uploaded orphans — pending captures exist locally before Firestore has a doc.
             photoDao.listForProperty(propertyId)
                 .filter { it.uploaded && it.id !in remotePhotoIds }
                 .forEach { photoDao.delete(it.id) }
-            
-            // Merge existing localUris to not overwrite with null when syncing from cloud
             for (p in photos) {
                 val existing = photoDao.get(p.id)
                 val toSave = if (existing != null) p.copy(localUri = existing.localUri) else p
                 photoDao.upsert(PhotoEntity.from(toSave))
             }
-            downloadRemotePhotos(propertyId)
+        }
     }.fold(
         onSuccess = { SyncResult.ok() },
         onFailure = { SyncResult.from("inspection data", it) },

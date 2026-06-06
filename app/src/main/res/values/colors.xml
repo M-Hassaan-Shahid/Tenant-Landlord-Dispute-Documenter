@@ -17,17 +17,23 @@
     <color name="proofnest_on_surface">#0F1418</color>
     <color name="proofnest_on_surface_variant">#3D4A52</color>
     <color name="proofnest_on_surface_muted">#5C6770</color>
-    <color name="chip_active_bg">#E3F2FD</color>
+    <color name="chip_active_bg">#D0F0D2</color>
     <color name="chip_occupied_bg">#D0F0D2</color>
-    <color name="chip_pending_bg">#FFF3E0</color>
+    <color name="chip_pending_bg">#FFF0D4</color>
+    <color name="chip_approval_bg">#FFD980</color>
     <color name="card_border">#D8DEE3</color>
     <color name="proofnest_surface_variant">#E7ECEF</color>
     <color name="proofnest_outline">#9EA3A8</color>
 
-    <!-- Status colors -->
-    <color name="status_pending">#E65100</color>
-    <color name="status_active">#1565C0</color>
-    <color name="status_rejected">#B00020</color>
+    <!-- Action / semantic -->
+    <color name="proofnest_error">#D32F2F</color>
+    <color name="proofnest_error_container">#FFEBEE</color>
+
+    <!-- Status colors — muted green + amber, aligned with brand -->
+    <color name="status_pending">#B86E00</color>
+    <color name="status_approval">#9A6B00</color>
+    <color name="status_active">#2E7D32</color>
+    <color name="status_rejected">#C62828</color>
     <color name="status_occupied">#2E7D32</color>
     <color name="status_closed">#607D8B</color>
     <color name="status_warn">#E65100</color>
@@ -40,14 +46,17 @@
     <color name="rating_fair_bg">#FFF3E0</color>
     <color name="rating_damaged_bg">#FFEBEE</color>
     <color name="notification_read_surface">#FAFBFC</color>
+    <color name="notif_icon_bg">#D0F0D2</color>
+    <color name="notif_icon_tint">#2E7D32</color>
+    <color name="notif_unread_accent">#FFB300</color>
     <color name="welcome_banner_subtitle">#E0FFFFFF</color>
     <color name="invite_card_stroke">#A8D5AB</color>
-    <color name="info_banner_bg">#FFF3E0</color>
-    <color name="info_banner_text">#5D4037</color>
-    <color name="approval_banner_bg">#FFF8E1</color>
-    <color name="approval_banner_text">#3E2723</color>
-    <color name="compare_banner_title">#3E2723</color>
-    <color name="compare_banner_body">#5D4037</color>
+    <color name="info_banner_bg">#D0F0D2</color>
+    <color name="info_banner_text">#1B5E20</color>
+    <color name="approval_banner_bg">#FFD980</color>
+    <color name="approval_banner_text">#8A5A00</color>
+    <color name="compare_banner_title">#8A5A00</color>
+    <color name="compare_banner_body">#2E7D32</color>
     <color name="compare_summary_stroke">#E8C04A</color>
     <color name="camera_metadata_scrim">#80000000</color>
     <color name="camera_bar_scrim">#99000000</color>

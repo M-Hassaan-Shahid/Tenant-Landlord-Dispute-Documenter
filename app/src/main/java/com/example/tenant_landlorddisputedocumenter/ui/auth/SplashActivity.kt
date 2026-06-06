@@ -32,7 +32,7 @@ class SplashActivity : BaseActivity() {
         playEntranceAnimation()
 
         lifecycleScope.launch {
-            val minDisplayMs = 900L
+            val minDisplayMs = 2_800L
             val startMs = System.currentTimeMillis()
 
             val uid = container.firebaseAuth.currentUser?.uid

@@ -1,20 +1,28 @@
 package com.example.tenant_landlorddisputedocumenter.ui.dispute
 
-import android.content.res.ColorStateList
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.ItemCompareBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.ConditionRating
+import com.example.tenant_landlorddisputedocumenter.domain.model.Photo
 import com.example.tenant_landlorddisputedocumenter.domain.model.RatingDelta
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 class CompareAdapter(
+    private val scope: CoroutineScope,
+    private val loadPhotos: suspend (List<String>) -> List<Photo>,
+    private val onPhotoClick: (Uri?) -> Unit,
     private val onRaiseDispute: (ChecklistItem) -> Unit,
 ) : ListAdapter<ChecklistItem, CompareAdapter.CompareViewHolder>(CompareDiffCallback()) {
 
@@ -24,13 +32,19 @@ class CompareAdapter(
     }
 
     override fun onBindViewHolder(holder: CompareViewHolder, position: Int) {
-        holder.bind(getItem(position), onRaiseDispute)
+        holder.bind(getItem(position), scope, loadPhotos, onPhotoClick, onRaiseDispute)
     }
 
     class CompareViewHolder(private val binding: ItemCompareBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(item: ChecklistItem, onRaiseDispute: (ChecklistItem) -> Unit) {
+        fun bind(
+            item: ChecklistItem,
+            scope: CoroutineScope,
+            loadPhotos: suspend (List<String>) -> List<Photo>,
+            onPhotoClick: (Uri?) -> Unit,
+            onRaiseDispute: (ChecklistItem) -> Unit,
+        ) {
             val ctx = binding.root.context
             binding.textItemName.text = item.name
 
@@ -48,6 +62,11 @@ class CompareAdapter(
                 if (item.moveInNote.isBlank()) View.GONE else View.VISIBLE
             binding.textMoveOutNote.visibility =
                 if (item.moveOutNote.isBlank()) View.GONE else View.VISIBLE
+
+            bindPhasePhoto(scope, item.moveInPhotoIds, binding.imageMoveInThumb, binding.iconMoveInPlaceholder,
+                binding.frameMoveInPhoto, loadPhotos, onPhotoClick)
+            bindPhasePhoto(scope, item.moveOutPhotoIds, binding.imageMoveOutThumb, binding.iconMoveOutPlaceholder,
+                binding.frameMoveOutPhoto, loadPhotos, onPhotoClick)
 
             val delta = item.ratingDelta()
             binding.chipChange.text = when (delta) {
@@ -67,6 +86,39 @@ class CompareAdapter(
             binding.buttonRaiseDispute.visibility =
                 if (delta == RatingDelta.DEGRADED) View.VISIBLE else View.GONE
             binding.buttonRaiseDispute.setOnClickListener { onRaiseDispute(item) }
+        }
+
+        private fun bindPhasePhoto(
+            scope: CoroutineScope,
+            photoIds: List<String>,
+            image: android.widget.ImageView,
+            placeholder: android.widget.ImageView,
+            frame: View,
+            loadPhotos: suspend (List<String>) -> List<Photo>,
+            onPhotoClick: (Uri?) -> Unit,
+        ) {
+            if (photoIds.isEmpty()) {
+                image.visibility = View.GONE
+                placeholder.visibility = View.VISIBLE
+                frame.setOnClickListener(null)
+                frame.isClickable = false
+                return
+            }
+            scope.launch {
+                val photo = loadPhotos(photoIds).firstOrNull()
+                val source = photo?.localUri ?: photo?.remoteUrl
+                val viewUri = source?.let { Uri.parse(it) }
+                if (source == null) {
+                    image.visibility = View.GONE
+                    placeholder.visibility = View.VISIBLE
+                    return@launch
+                }
+                placeholder.visibility = View.GONE
+                image.visibility = View.VISIBLE
+                Glide.with(binding.root).load(source).centerCrop().into(image)
+                frame.isClickable = true
+                frame.setOnClickListener { onPhotoClick(viewUri) }
+            }
         }
 
         private fun ratingColor(context: android.content.Context, rating: ConditionRating?) =

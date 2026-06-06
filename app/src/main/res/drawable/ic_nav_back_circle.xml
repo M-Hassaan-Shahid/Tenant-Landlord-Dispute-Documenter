@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="36dp"
-        android:height="36dp"
-        android:gravity="center">
-        <shape android:shape="oval">
-            <solid android:color="@color/toolbar_nav_circle_bg" />
-        </shape>
-    </item>
-    <item
-        android:drawable="@drawable/ic_arrow_back"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32"
+    android:autoMirrored="true">
+    <path
+        android:fillColor="@color/toolbar_nav_circle_bg"
+        android:pathData="M16,16m-14,0a14,14 0,1 1,28 0a14,14 0,1 1,-28 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M18.5,9.5 L11,16 L18.5,22.5 L17,24 L8,16 L17,8 Z" />
+</vector>

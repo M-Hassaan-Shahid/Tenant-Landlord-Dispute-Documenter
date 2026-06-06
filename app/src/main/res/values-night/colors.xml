@@ -13,16 +13,21 @@
     <color name="proofnest_on_surface">#E8EDF0</color>
     <color name="proofnest_on_surface_variant">#B0BAC2</color>
     <color name="proofnest_on_surface_muted">#8A949C</color>
-    <color name="chip_active_bg">#1A3A5C</color>
+    <color name="chip_active_bg">#1E3A22</color>
     <color name="chip_occupied_bg">#1E3A22</color>
-    <color name="chip_pending_bg">#4A3018</color>
+    <color name="chip_pending_bg">#4A3820</color>
+    <color name="chip_approval_bg">#5C4A1A</color>
     <color name="card_border">#2E3840</color>
     <color name="proofnest_surface_variant">#252E36</color>
     <color name="proofnest_outline">#5C6770</color>
 
-    <color name="status_pending">#FF9800</color>
-    <color name="status_active">#64B5F6</color>
-    <color name="status_rejected">#EF5350</color>
+    <color name="proofnest_error">#FF5252</color>
+    <color name="proofnest_error_container">#4A1A1A</color>
+
+    <color name="status_pending">#FFCC80</color>
+    <color name="status_approval">#FFD980</color>
+    <color name="status_active">#81C784</color>
+    <color name="status_rejected">#FF5252</color>
     <color name="status_occupied">#66BB6A</color>
     <color name="status_closed">#90A4AE</color>
     <color name="status_warn">#FF9800</color>
@@ -34,14 +39,17 @@
     <color name="rating_fair_bg">#4A3018</color>
     <color name="rating_damaged_bg">#4A1A1A</color>
     <color name="notification_read_surface">#1A2228</color>
+    <color name="notif_icon_bg">#1E3A22</color>
+    <color name="notif_icon_tint">#A5D6A7</color>
+    <color name="notif_unread_accent">#FFB300</color>
     <color name="welcome_banner_subtitle">#D9FFFFFF</color>
     <color name="invite_card_stroke">#2E7D32</color>
-    <color name="info_banner_bg">#4A3018</color>
-    <color name="info_banner_text">#FFE0B2</color>
+    <color name="info_banner_bg">#1E3A22</color>
+    <color name="info_banner_text">#C8E6C9</color>
     <color name="approval_banner_bg">#5C4A1A</color>
-    <color name="approval_banner_text">#FFE082</color>
-    <color name="compare_banner_title">#FFE082</color>
-    <color name="compare_banner_body">#FFCC80</color>
+    <color name="approval_banner_text">#FFCC80</color>
+    <color name="compare_banner_title">#FFCC80</color>
+    <color name="compare_banner_body">#C8E6C9</color>
     <color name="compare_summary_stroke">#FFB300</color>
     <color name="toolbar_nav_circle_bg">#33FFFFFF</color>
 </resources>

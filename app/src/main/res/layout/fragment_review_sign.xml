@@ -9,82 +9,119 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary">
+        android:background="@android:color/transparent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             style="@style/Widget.ProofNest.Toolbar.Back"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/toolbar_content_height"
             app:title="@string/review_sign_title" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="@dimen/content_padding"
+            android:paddingHorizontal="@dimen/content_padding"
+            android:paddingTop="12dp"
             android:paddingBottom="@dimen/bottom_content_padding">
 
             <TextView
+                android:id="@+id/textReviewIntro"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:lineSpacingMultiplier="1.2"
                 android:text="@string/review_sign_intro"
-                android:textAppearance="@style/TextAppearance.ProofNest.Muted" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                style="@style/Widget.ProofNest.Card"
-                app:cardElevation="0dp">
-
-                <TextView
-                    android:id="@+id/textSummary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:lineSpacingMultiplier="1.5"
-                    android:padding="16dp"
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="@color/proofnest_on_surface"
-                    tools:text="• Walls: GOOD&#10;• Floor: FAIR" />
-            </com.google.android.material.card.MaterialCardView>
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="@color/proofnest_on_surface_muted" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="@string/signature_yours"
-                android:textAppearance="?attr/textAppearanceLabelMedium"
-                android:textColor="@color/proofnest_on_surface_variant" />
+                android:text="@string/review_documentation_title"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="@color/proofnest_primary" />
 
-            <com.example.tenant_landlorddisputedocumenter.ui.SignaturePadView
-                android:id="@+id/signaturePad"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerReviewItems"
                 android:layout_width="match_parent"
-                android:layout_height="160dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:background="@drawable/bg_signature"
-                android:padding="8dp" />
+                android:nestedScrollingEnabled="false"
+                tools:itemCount="2"
+                tools:listitem="@layout/item_review_inspection" />
+
+            <TextView
+                android:id="@+id/textReviewEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:padding="24dp"
+                android:text="@string/review_no_items"
+                android:textAppearance="@style/TextAppearance.ProofNest.Muted"
+                android:visibility="gone"
+                tools:visibility="gone" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/signature_yours"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="@color/proofnest_on_surface" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/proofnest_outline"
+                app:strokeWidth="1dp">
+
+                <com.example.tenant_landlorddisputedocumenter.ui.SignaturePadView
+                    android:id="@+id/signaturePad"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:layout_margin="4dp" />
+            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonClearSignature"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="start"
+                android:layout_gravity="end"
                 android:layout_marginTop="8dp"
+                android:minHeight="40dp"
                 android:text="@string/signature_clear" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonDisputeItem"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/action_raise_dispute"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonSubmit"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="@dimen/footer_button_margin_top"
                 android:text="@string/confirm_signature" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

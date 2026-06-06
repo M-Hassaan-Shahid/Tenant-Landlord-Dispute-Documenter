@@ -46,14 +46,18 @@ class DashboardViewModel(
         )
 
     init {
-        sync()
+        sync(force = false)
     }
 
-    fun sync() {
+    fun sync(force: Boolean = true) {
         val uid = authRepository.currentUserId.value ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            val syncResult = syncCoordinator.syncAllForUser(uid)
+            _uiState.update { it.copy(isLoading = force, error = null) }
+            val syncResult = if (force) {
+                syncCoordinator.syncAllForUser(uid, force = true)
+            } else {
+                syncCoordinator.syncDashboardForUser(uid, force = false)
+            }
             _uiState.update {
                 it.copy(
                     isLoading = false,

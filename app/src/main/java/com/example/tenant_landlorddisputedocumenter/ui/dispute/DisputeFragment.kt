@@ -21,6 +21,8 @@ import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentDisputeBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import com.example.tenant_landlorddisputedocumenter.ui.inspection.CameraCaptureActivity
+import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
+import android.net.Uri
 import kotlinx.coroutines.launch
 
 class DisputeFragment : Fragment() {
@@ -34,6 +36,7 @@ class DisputeFragment : Fragment() {
     }
     private lateinit var propertyId: String
     private lateinit var itemId: String
+    private var disputePhase: InspectionPhase = InspectionPhase.MOVE_IN
 
     private val captureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -45,7 +48,10 @@ class DisputeFragment : Fragment() {
             viewModel.setCounterPhoto(photoId)
             binding.placeholderEvidence.visibility = View.GONE
             binding.imageEvidence.visibility = View.VISIBLE
-            photoUri?.let { Glide.with(this).load(it).into(binding.imageEvidence) }
+            photoUri?.let {
+                binding.imageEvidence.tag = it
+                Glide.with(this).load(it).into(binding.imageEvidence)
+            }
             Toast.makeText(requireContext(), "Counter-evidence photo attached.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -74,13 +80,32 @@ class DisputeFragment : Fragment() {
         binding.textItemName.text = getString(R.string.dispute_item_label, itemName)
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
 
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                appContainer.propertyRepository.observeProperty(propertyId).collect { property ->
+                    disputePhase = when (property?.status) {
+                        com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus.MOVE_OUT ->
+                            InspectionPhase.MOVE_OUT
+                        else -> InspectionPhase.MOVE_IN
+                    }
+                }
+            }
+        }
+
         binding.buttonAttachPhoto.setOnClickListener {
             val intent = Intent(requireContext(), CameraCaptureActivity::class.java).apply {
                 putExtra(CameraCaptureActivity.EXTRA_PROPERTY_ID, propertyId)
                 putExtra(CameraCaptureActivity.EXTRA_ITEM_ID, itemId)
-                putExtra(CameraCaptureActivity.EXTRA_PHASE, InspectionPhase.MOVE_OUT.name)
+                putExtra(CameraCaptureActivity.EXTRA_PHASE, disputePhase.name)
             }
             captureLauncher.launch(intent)
+        }
+
+        binding.imageEvidence.setOnClickListener {
+            val drawable = binding.imageEvidence.drawable ?: return@setOnClickListener
+            if (binding.imageEvidence.visibility != View.VISIBLE) return@setOnClickListener
+            val tag = binding.imageEvidence.tag as? String
+            showPhotoViewer(tag?.let { Uri.parse(it) })
         }
 
         binding.buttonSubmitDispute.setOnClickListener {
@@ -91,12 +116,22 @@ class DisputeFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     binding.buttonSubmitDispute.isEnabled = !state.isLoading
+                    binding.buttonAttachPhoto.isEnabled = !state.isLoading
+                    binding.buttonSubmitDispute.text = if (state.isLoading) {
+                        getString(R.string.dispute_submitting)
+                    } else {
+                        getString(R.string.action_submit_dispute)
+                    }
                     state.error?.let {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearMessages()
                     }
                     if (state.submitted) {
-                        Toast.makeText(requireContext(), "Dispute submitted successfully.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.dispute_after_submit_body),
+                            Toast.LENGTH_LONG,
+                        ).show()
                         viewModel.clearMessages()
                         findNavController().navigateUp()
                     }

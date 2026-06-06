@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.ItemPropertyBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.Property
-import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
+import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyRoleUi
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyStatusUi
 
 class PropertyAdapter(
@@ -36,13 +36,7 @@ class PropertyAdapter(
 
             val isLandlord = property.landlordId == currentUserId
             val roleLabel = if (isLandlord) "Landlord" else "Tenant"
-            val statusHint = when (property.status) {
-                PropertyStatus.ACTIVE -> " · Move-in in progress"
-                PropertyStatus.OCCUPIED -> " · Lease active"
-                PropertyStatus.PENDING_APPROVAL -> " · Approval pending"
-                PropertyStatus.PENDING -> " · Awaiting tenant"
-                else -> ""
-            }
+            val statusHint = PropertyRoleUi.propertyCardHint(property, currentUserId)
             binding.textRole.text = "$roleLabel$statusHint"
 
             binding.textRent.text =

@@ -19,6 +19,7 @@ import com.example.tenant_landlorddisputedocumenter.navigation.CompareFragmentAr
 import com.example.tenant_landlorddisputedocumenter.navigation.CompareFragmentDirections
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.RatingDelta
+import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import kotlinx.coroutines.launch
 
 class CompareFragment : Fragment() {
@@ -34,7 +35,7 @@ class CompareFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentCompareBinding.inflate(inflater, container, false)
         return binding.root
@@ -49,22 +50,19 @@ class CompareFragment : Fragment() {
         val propertyId = args.propertyId
         viewModel.loadForProperty(propertyId)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            val sync = appContainer.syncCoordinator.syncForCompare(propertyId)
-            if (!sync.succeeded) {
-                android.widget.Toast.makeText(
-                    requireContext(),
-                    sync.errors.firstOrNull() ?: "Sync had issues",
-                    android.widget.Toast.LENGTH_SHORT,
-                ).show()
-            }
-        }
-
-        adapter = CompareAdapter { item -> navigateToDispute(propertyId, item) }
+        adapter = CompareAdapter(
+            scope = viewLifecycleOwner.lifecycleScope,
+            loadPhotos = { ids -> appContainer.inspectionRepository.getPhotos(ids) },
+            onPhotoClick = { uri -> showPhotoViewer(uri) },
+            onRaiseDispute = { item -> navigateToDispute(propertyId, item) },
+        )
         binding.recyclerViewComparison.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewComparison.adapter = adapter
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
+
+        binding.swipeRefresh.setColorSchemeResources(R.color.proofnest_primary)
+        binding.swipeRefresh.setOnRefreshListener { syncCompareData(propertyId, force = true, showSpinner = true) }
 
         binding.buttonGenerateReport.setOnClickListener {
             findNavController().navigate(
@@ -72,7 +70,6 @@ class CompareFragment : Fragment() {
             )
         }
 
-        // Observe all items that have BOTH move-in and move-out data
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 appContainer.inspectionRepository.observeAllItems(propertyId).collect { items ->
@@ -97,6 +94,30 @@ class CompareFragment : Fragment() {
                     state.error?.let {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearMessages()
+                    }
+                }
+            }
+        }
+
+        syncCompareData(propertyId, force = false, showSpinner = false)
+    }
+
+    private fun syncCompareData(propertyId: String, force: Boolean, showSpinner: Boolean) {
+        val appContainer = (requireContext().applicationContext as ProofNestApplication).container
+        if (showSpinner) {
+            binding.swipeRefresh.isRefreshing = true
+        }
+        appContainer.repositoryScope.launch {
+            val sync = appContainer.syncCoordinator.syncForCompare(propertyId, force = force)
+            if (showSpinner) {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    binding.swipeRefresh.isRefreshing = false
+                    if (!sync.succeeded) {
+                        Toast.makeText(
+                            requireContext(),
+                            sync.errors.firstOrNull() ?: getString(R.string.sync_had_issues),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
                 }
             }

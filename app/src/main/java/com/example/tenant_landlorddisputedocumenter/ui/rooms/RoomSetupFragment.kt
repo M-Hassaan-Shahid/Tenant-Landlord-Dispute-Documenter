@@ -13,7 +13,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.example.tenant_landlorddisputedocumenter.navigation.RoomSetupFragmentArgs
+import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentRoomSetupBinding
 import com.google.android.material.textfield.TextInputEditText
@@ -47,9 +49,7 @@ class RoomSetupFragment : Fragment() {
         val propertyId = args.propertyId
         viewModel.loadForProperty(propertyId)
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { appContainer.syncCoordinator.refreshPropertyData(propertyId) }
-        }
+        refreshPropertyInBackground(propertyId)
 
         adapter = RoomAdapter(onDelete = { room -> viewModel.deleteRoom(room.id) })
         binding.recyclerViewRooms.layoutManager = LinearLayoutManager(requireContext())
@@ -72,12 +72,23 @@ class RoomSetupFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 appContainer.propertyRepository.observeProperty(propertyId).collect { property ->
-                    val status = property?.status ?: return@collect
+                    if (property == null) return@collect
+                    val uid = appContainer.authRepository.currentUserId.value
+                    val isLandlord = property.landlordId == uid
+                    if (!isLandlord) {
+                        binding.fabAddRoom.visibility = View.GONE
+                        adapter.setDeleteEnabled(false)
+                        binding.textEmpty.text = getString(R.string.rooms_landlord_only)
+                        return@collect
+                    }
+                    val status = property.status
                     val locked = appContainer.inspectionRepository.isStructureLocked(propertyId, status)
                     binding.fabAddRoom.visibility = if (locked) View.GONE else View.VISIBLE
                     adapter.setDeleteEnabled(!locked)
-                    if (locked) {
-                        binding.textEmpty.text = "Rooms are locked — inspection in progress."
+                    binding.textEmpty.text = if (locked) {
+                        getString(R.string.rooms_locked)
+                    } else {
+                        getString(R.string.rooms_empty)
                     }
                 }
             }

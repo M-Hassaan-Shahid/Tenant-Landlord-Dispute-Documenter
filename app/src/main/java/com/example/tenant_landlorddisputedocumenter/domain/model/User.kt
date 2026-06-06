@@ -10,4 +10,5 @@ data class User(
     val role: UserRole = UserRole.TENANT,
     val createdAtMillis: Long = System.currentTimeMillis(),
     val fcmToken: String? = null,
+    val photoUrl: String? = null,
 )

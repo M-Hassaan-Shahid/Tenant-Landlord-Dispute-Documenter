@@ -9,13 +9,11 @@ import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
-import androidx.core.view.updatePadding
 import androidx.fragment.app.FragmentManager
 import com.example.tenant_landlorddisputedocumenter.ui.applyAppBarStatusBarInset
+import com.example.tenant_landlorddisputedocumenter.ui.applyBottomNavInset
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
@@ -61,12 +59,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.bottomNavigation) { view, insets ->
-            val navBar = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            view.updatePadding(bottom = navBar.bottom)
-            insets
-        }
-        ViewCompat.requestApplyInsets(binding.bottomNavigation)
+        binding.bottomNavigation.applyBottomNavInset()
 
         supportFragmentManager.registerFragmentLifecycleCallbacks(
             object : FragmentManager.FragmentLifecycleCallbacks() {

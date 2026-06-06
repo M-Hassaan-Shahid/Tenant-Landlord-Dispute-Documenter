@@ -10,7 +10,7 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="@dimen/toolbar_content_height"
         style="@style/Widget.ProofNest.Toolbar.Back"
         app:title="@string/action_create_account" />
 
@@ -149,7 +149,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:textColor="?attr/colorError"
+                android:textColor="@color/proofnest_error"
                 android:visibility="gone"
                 tools:text="Passwords don't match"
                 tools:visibility="visible" />

@@ -39,6 +39,33 @@
             android:clickable="false"
             tools:text="OPEN" />
 
+        <TextView
+            android:id="@+id/textEvidenceLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/dispute_evidence_label"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="@color/proofnest_on_surface_variant"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <HorizontalScrollView
+            android:id="@+id/photoStripScroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:scrollbars="none"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:id="@+id/photoStrip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonResolve"
             style="@style/Widget.Material3.Button.TonalButton"

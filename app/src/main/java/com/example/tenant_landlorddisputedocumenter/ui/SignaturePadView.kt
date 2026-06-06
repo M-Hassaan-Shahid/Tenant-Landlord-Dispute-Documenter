@@ -25,7 +25,7 @@ class SignaturePadView @JvmOverloads constructor(
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.BLACK
         style = Paint.Style.STROKE
-        strokeWidth = 6f
+        strokeWidth = 8f
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
@@ -44,6 +44,12 @@ class SignaturePadView @JvmOverloads constructor(
     var hasInk: Boolean = false
         private set
 
+    init {
+        isClickable = true
+        isFocusable = true
+        setBackgroundColor(Color.WHITE)
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
@@ -51,6 +57,12 @@ class SignaturePadView @JvmOverloads constructor(
             bmp.eraseColor(Color.WHITE)
             bitmapCanvas = Canvas(bmp)
         }
+        hasInk = false
+    }
+
+    override fun setEnabled(enabled: Boolean) {
+        super.setEnabled(enabled)
+        alpha = if (enabled) 1f else 0.55f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -63,6 +75,7 @@ class SignaturePadView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (!isEnabled) return false
         val x = event.x
         val y = event.y
         when (event.action) {

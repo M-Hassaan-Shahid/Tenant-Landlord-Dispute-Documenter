@@ -18,7 +18,7 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbarCamera"
         android:layout_width="0dp"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="@dimen/toolbar_content_height"
         android:background="@android:color/transparent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -48,7 +48,8 @@
         android:background="@color/camera_bar_scrim"
         android:gravity="center"
         android:orientation="horizontal"
-        android:paddingVertical="24dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -61,6 +62,36 @@
             android:clickable="true"
             android:contentDescription="@string/action_capture"
             android:focusable="true" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/savingOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#CC000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            app:indicatorColor="@color/proofnest_primary" />
+
+        <TextView
+            android:id="@+id/textSaving"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/capture_saving"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/white" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -9,13 +9,13 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary">
+        android:background="@android:color/transparent">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             style="@style/Widget.ProofNest.Toolbar.Back"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/toolbar_content_height"
             app:title="@string/tile_move_in" />
 
         <include
@@ -33,21 +33,37 @@
             app:tabTextColor="@color/proofnest_on_surface_muted" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/viewPagerRooms"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingBottom="72dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/buttonFinishInspection"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginHorizontal="@dimen/content_padding"
-        android:layout_marginBottom="16dp"
-        android:text="@string/finish_inspection"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/viewPagerRooms"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/content_padding"
+            android:layout_marginTop="@dimen/footer_button_margin_top"
+            android:layout_marginBottom="@dimen/bottom_content_padding"
+            app:cardBackgroundColor="@color/proofnest_surface"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonFinishInspection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:text="@string/finish_inspection"
+                tools:visibility="visible" />
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

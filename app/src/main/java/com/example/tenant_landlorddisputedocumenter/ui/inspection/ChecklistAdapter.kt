@@ -16,7 +16,9 @@ import android.content.res.ColorStateList
 import androidx.core.content.ContextCompat
 import com.google.android.material.chip.Chip
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import android.net.Uri
 import android.widget.LinearLayout
+import com.example.tenant_landlorddisputedocumenter.ui.allowHorizontalPhotoScroll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -27,6 +29,7 @@ class ChecklistAdapter(
     private val onRatingChanged: (itemId: String, rating: ConditionRating) -> Unit,
     private val onNoteChanged: (itemId: String, note: String) -> Unit,
     private val onCapturePhoto: (ChecklistItem) -> Unit,
+    private val onPhotoClick: (Uri?) -> Unit = {},
 ) : ListAdapter<ChecklistItem, ChecklistAdapter.ChecklistViewHolder>(ChecklistDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChecklistViewHolder {
@@ -42,6 +45,7 @@ class ChecklistAdapter(
             onRatingChanged = onRatingChanged,
             onNoteChanged = onNoteChanged,
             onCapturePhoto = onCapturePhoto,
+            onPhotoClick = onPhotoClick,
         )
     }
 
@@ -58,6 +62,7 @@ class ChecklistAdapter(
             onRatingChanged: (String, ConditionRating) -> Unit,
             onNoteChanged: (String, String) -> Unit,
             onCapturePhoto: (ChecklistItem) -> Unit,
+            onPhotoClick: (Uri?) -> Unit,
         ) {
             binding.textItemName.text = item.name
 
@@ -66,7 +71,7 @@ class ChecklistAdapter(
                 R.string.photos_count,
                 photoIds.size,
             )
-            bindPhotoStrip(binding, photoIds, onPhotoThumbs)
+            bindPhotoStrip(binding, photoIds, onPhotoThumbs, onPhotoClick)
 
             val currentRating = if (phase == InspectionPhase.MOVE_IN) item.moveInRating else item.moveOutRating
             binding.chipGroupRating.setOnCheckedStateChangeListener(null)
@@ -112,8 +117,10 @@ class ChecklistAdapter(
             binding: ItemChecklistBinding,
             photoIds: List<String>,
             onPhotoThumbs: (List<String>, LinearLayout) -> Unit,
+            onPhotoClick: (Uri?) -> Unit,
         ) {
             binding.photoStrip.removeAllViews()
+            binding.photoStripScroll.allowHorizontalPhotoScroll()
             if (photoIds.isEmpty()) {
                 binding.photoStripScroll.visibility = View.GONE
                 return

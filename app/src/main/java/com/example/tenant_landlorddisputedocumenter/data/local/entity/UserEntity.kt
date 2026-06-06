@@ -15,8 +15,11 @@ data class UserEntity(
     val role: UserRole,
     val createdAtMillis: Long,
     val fcmToken: String?,
+    val photoUrl: String? = null,
 ) {
-    fun toDomain(): User = User(uid, email, displayName, phone, cnic, role, createdAtMillis, fcmToken)
+    fun toDomain(): User = User(
+        uid, email, displayName, phone, cnic, role, createdAtMillis, fcmToken, photoUrl,
+    )
 
     companion object {
         fun from(user: User): UserEntity = UserEntity(
@@ -28,6 +31,7 @@ data class UserEntity(
             role = user.role,
             createdAtMillis = user.createdAtMillis,
             fcmToken = user.fcmToken,
+            photoUrl = user.photoUrl,
         )
     }
 }

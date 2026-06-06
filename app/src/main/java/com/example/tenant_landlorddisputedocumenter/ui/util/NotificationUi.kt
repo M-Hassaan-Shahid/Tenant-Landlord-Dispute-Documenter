@@ -27,6 +27,6 @@ object NotificationUi {
             if (read) R.drawable.bg_notif_icon_muted else R.drawable.bg_notif_icon,
         )
         iconView.setImageResource(iconFor(type))
-        iconView.setColorFilter(ContextCompat.getColor(ctx, R.color.proofnest_primary))
+        iconView.setColorFilter(ContextCompat.getColor(ctx, R.color.notif_icon_tint))
     }
 }

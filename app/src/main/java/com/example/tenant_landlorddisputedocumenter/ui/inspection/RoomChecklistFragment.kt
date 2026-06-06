@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import com.bumptech.glide.Glide
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import kotlinx.coroutines.launch
 
 class RoomChecklistFragment : Fragment() {
@@ -68,12 +69,15 @@ class RoomChecklistFragment : Fragment() {
                 photos.forEach { photo ->
                     val thumb = inflater.inflate(R.layout.item_photo_thumb, strip, false)
                     val image = thumb.findViewById<ImageView>(R.id.imageThumb)
-                    val source = photo.localUri?.let { android.net.Uri.parse(it) } ?: photo.remoteUrl
+                    val source = photo.localUri ?: photo.remoteUrl
+                    val viewUri = source?.let { android.net.Uri.parse(it) }
                     Glide.with(strip)
                         .load(source)
                         .centerCrop()
                         .placeholder(R.drawable.ic_image)
                         .into(image)
+                    thumb.isClickable = true
+                    thumb.setOnClickListener { showPhotoViewer(viewUri) }
                     strip.addView(thumb)
                 }
             },

@@ -2,6 +2,7 @@ package com.example.tenant_landlorddisputedocumenter.ui.inspection
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -10,12 +11,17 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.tenant_landlorddisputedocumenter.navigation.ReviewSignFragmentArgs
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentReviewSignBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
+import com.example.tenant_landlorddisputedocumenter.ui.dispute.showDisputeItemPicker
+import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
+import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -29,7 +35,7 @@ class ReviewSignFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentReviewSignBinding.inflate(inflater, container, false)
         return binding.root
@@ -46,23 +52,106 @@ class ReviewSignFragment : Fragment() {
         val propertyId = args.propertyId
         val phase = if (args.phase == "MOVE_OUT") InspectionPhase.MOVE_OUT else InspectionPhase.MOVE_IN
 
-        binding.toolbar.title = if (phase == InspectionPhase.MOVE_OUT) "Sign Move-Out Record" else "Sign Move-In Record"
+        binding.toolbar.title = if (phase == InspectionPhase.MOVE_OUT) {
+            getString(R.string.review_sign_move_out)
+        } else {
+            getString(R.string.review_sign_move_in)
+        }
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
 
+        binding.signaturePad.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    v.parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            false
+        }
+
+        val reviewAdapter = ReviewItemAdapter(
+            phase = phase,
+            scope = viewLifecycleOwner.lifecycleScope,
+            loadPhotos = { ids -> inspectionRepo.getPhotos(ids) },
+            onPhotoClick = { uri -> showPhotoViewer(uri) },
+        )
+        binding.recyclerReviewItems.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerReviewItems.adapter = reviewAdapter
+
+        refreshPropertyInBackground(propertyId)
+
         viewLifecycleOwner.lifecycleScope.launch {
-            runCatching { inspectionRepo.syncForProperty(propertyId) }
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                propertyRepo.observeProperty(propertyId).collect { property ->
+                    if (property == null) return@collect
+                    val uid = authRepo.currentUserId.value
+                    val notReady = when (phase) {
+                        InspectionPhase.MOVE_IN ->
+                            property.moveInInspectionSubmittedAtMillis == null
+                        InspectionPhase.MOVE_OUT ->
+                            property.moveOutInspectionSubmittedAtMillis == null
+                    }
+                    if (notReady) {
+                        val message = when (phase) {
+                            InspectionPhase.MOVE_IN -> getString(R.string.review_sign_not_ready)
+                            InspectionPhase.MOVE_OUT -> getString(R.string.review_sign_move_out_not_ready)
+                        }
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                        findNavController().navigateUp()
+                        return@collect
+                    }
+                    binding.textReviewIntro.setText(
+                        when {
+                            property.landlordId == uid -> R.string.review_sign_landlord_intro
+                            property.tenantId == uid -> R.string.review_sign_tenant_intro
+                            else -> R.string.review_sign_intro
+                        },
+                    )
+                    val showDispute = property.tenantId == uid && when (phase) {
+                        InspectionPhase.MOVE_IN ->
+                            property.moveInInspectionSubmittedAtMillis != null
+                        InspectionPhase.MOVE_OUT ->
+                            property.moveOutInspectionSubmittedAtMillis != null
+                    }
+                    binding.buttonDisputeItem.visibility =
+                        if (showDispute) View.VISIBLE else View.GONE
+                }
+            }
+        }
+
+        binding.buttonDisputeItem.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val items = inspectionRepo.observeAllItems(propertyId).first()
+                showDisputeItemPicker(propertyId, items) {
+                    Toast.makeText(requireContext(), "No checklist items to dispute.", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val uid = authRepo.currentUserId.value ?: return@repeatOnLifecycle
-                inspectionRepo.observeSignatures(propertyId, phase).collect { signatures ->
+                combine(
+                    propertyRepo.observeProperty(propertyId),
+                    inspectionRepo.observeSignatures(propertyId, phase),
+                    authRepo.currentUserId,
+                ) { property, signatures, uid ->
+                    Triple(property, signatures, uid)
+                }.collect { (property, signatures, uid) ->
+                    if (property == null || uid == null) return@collect
                     val alreadySigned = signatures.any { it.signerUid == uid }
+                    val fullySigned = property.tenantId?.let { tenantId ->
+                        signatures.any { it.signerUid == property.landlordId } &&
+                            signatures.any { it.signerUid == tenantId }
+                    } ?: false
+
                     binding.signaturePad.isEnabled = !alreadySigned
                     binding.buttonClearSignature.isEnabled = !alreadySigned
                     binding.buttonSubmit.isEnabled = !alreadySigned
-                    if (alreadySigned) {
-                        binding.buttonSubmit.text = getString(R.string.signature_locked)
+                    binding.buttonDisputeItem.isEnabled = !alreadySigned
+
+                    binding.buttonSubmit.text = when {
+                        alreadySigned && fullySigned -> getString(R.string.signature_record_locked)
+                        alreadySigned -> getString(R.string.signature_you_signed)
+                        else -> getString(R.string.confirm_signature)
                     }
                 }
             }
@@ -74,7 +163,7 @@ class ReviewSignFragment : Fragment() {
 
         binding.buttonSubmit.setOnClickListener {
             if (!binding.signaturePad.hasInk) {
-                Toast.makeText(requireContext(), "Please draw your signature first.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), R.string.signature_draw_first, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -89,6 +178,7 @@ class ReviewSignFragment : Fragment() {
 
             val signatureBase64 = binding.signaturePad.toPngBase64()
             binding.buttonSubmit.isEnabled = false
+            binding.buttonSubmit.text = getString(R.string.signature_submitting)
 
             viewLifecycleOwner.lifecycleScope.launch {
                 runCatching {
@@ -110,7 +200,7 @@ class ReviewSignFragment : Fragment() {
                             propertyId = propertyId,
                             phase = phase,
                             landlordUid = property.landlordId,
-                            tenantUid = property.tenantId
+                            tenantUid = property.tenantId,
                         )
                         if (fullySigned) {
                             val newStatus = when (phase) {
@@ -123,27 +213,37 @@ class ReviewSignFragment : Fragment() {
                 }.onSuccess {
                     Toast.makeText(
                         requireContext(),
-                        if (phase == InspectionPhase.MOVE_IN) "Move-in record signed!" else "Move-out record signed!",
-                        Toast.LENGTH_LONG
+                        if (phase == InspectionPhase.MOVE_IN) {
+                            getString(R.string.signature_move_in_saved)
+                        } else {
+                            getString(R.string.signature_move_out_saved)
+                        },
+                        Toast.LENGTH_LONG,
                     ).show()
-                    // Pop back to Dashboard, clearing the inspection back-stack
                     findNavController().navigate(R.id.action_review_sign_to_dashboard)
                 }.onFailure { e ->
                     binding.buttonSubmit.isEnabled = true
+                    binding.buttonSubmit.text = getString(R.string.confirm_signature)
                     Toast.makeText(requireContext(), "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
             }
         }
 
-        // Populate the summary list of items before signing
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                inspectionRepo.observeAllItems(propertyId).collect { items ->
-                    val summary = items.joinToString("\n") { item ->
-                        val rating = if (phase == InspectionPhase.MOVE_IN) item.moveInRating else item.moveOutRating
-                        "• ${item.name}: ${rating?.name ?: "Not rated"}"
+                combine(
+                    inspectionRepo.observeAllItems(propertyId),
+                    inspectionRepo.observeRooms(propertyId),
+                ) { items, rooms ->
+                    val roomNames = rooms.associate { it.id to it.name }
+                    items.map { item ->
+                        ReviewItemRow(item, roomNames[item.roomId] ?: "Room")
                     }
-                    binding.textSummary.text = summary.ifBlank { "No items found for this inspection." }
+                }.collect { rows ->
+                    reviewAdapter.submitList(rows)
+                    val empty = rows.isEmpty()
+                    binding.textReviewEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+                    binding.recyclerReviewItems.visibility = if (empty) View.GONE else View.VISIBLE
                 }
             }
         }

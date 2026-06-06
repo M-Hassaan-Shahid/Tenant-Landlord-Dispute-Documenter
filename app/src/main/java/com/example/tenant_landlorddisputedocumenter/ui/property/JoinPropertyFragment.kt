@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentJoinPropertyBinding
 import kotlinx.coroutines.launch
@@ -46,6 +47,11 @@ class JoinPropertyFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     binding.buttonJoin.isEnabled = !state.isLoading
+                    binding.buttonJoin.text = if (state.isLoading) {
+                        getString(R.string.loading)
+                    } else {
+                        getString(R.string.action_join_property)
+                    }
                     if (state.error != null) {
                         Toast.makeText(requireContext(), state.error, Toast.LENGTH_SHORT).show()
                         viewModel.clearState()

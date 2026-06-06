@@ -68,6 +68,9 @@
         <action
             android:id="@+id/action_property_details_to_disputes_list"
             app:destination="@id/navigation_disputes_list" />
+        <action
+            android:id="@+id/action_property_details_to_review_sign"
+            app:destination="@id/navigation_review_sign" />
     </fragment>
 
     <fragment
@@ -167,6 +170,9 @@
         <argument
             android:name="propertyId"
             app:argType="string" />
+        <action
+            android:id="@+id/action_disputes_list_to_dispute"
+            app:destination="@id/navigation_dispute" />
     </fragment>
 
 </navigation>

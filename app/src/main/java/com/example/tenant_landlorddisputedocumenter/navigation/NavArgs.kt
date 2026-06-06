@@ -107,6 +107,11 @@ object PropertyDetailsFragmentDirections {
         R.id.action_property_details_to_disputes_list,
         bundleOf("propertyId" to propertyId),
     )
+
+    fun actionPropertyDetailsToReviewSign(propertyId: String, phase: String) = SimpleNavDirections(
+        R.id.action_property_details_to_review_sign,
+        bundleOf("propertyId" to propertyId, "phase" to phase),
+    )
 }
 
 object InspectionFragmentDirections {

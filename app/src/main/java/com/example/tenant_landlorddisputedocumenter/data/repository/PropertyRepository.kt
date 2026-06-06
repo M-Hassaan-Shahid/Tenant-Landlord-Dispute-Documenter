@@ -1,5 +1,6 @@
 package com.example.tenant_landlorddisputedocumenter.data.repository
 
+import com.example.tenant_landlorddisputedocumenter.data.SyncCache
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.DisputeDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.PropertyDao
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.PropertyEntity
@@ -23,7 +24,11 @@ class PropertyRepository(
     private val notificationRepository: NotificationRepository,
     private val inspectionRepository: InspectionRepository,
     private val disputeDao: DisputeDao,
+    private val syncCache: SyncCache,
 ) {
+    private fun invalidatePropertyCache(propertyId: String) {
+        syncCache.invalidateProperty(propertyId)
+    }
     /** Stream of properties the user is involved with — either as landlord or tenant. */
     fun observeForUser(uid: String): Flow<List<Property>> =
         propertyDao.observeForUser(uid).map { list -> list.map { it.toDomain() } }
@@ -121,7 +126,7 @@ class PropertyRepository(
                 recipientUid = tenantId,
                 type = NotificationType.TENANT_APPROVED,
                 title = "Request approved",
-                body = "You can now start the move-in inspection for ${domain.address}.",
+                body = "You're approved for ${domain.address}. Wait for the landlord to document move-in, then review and sign.",
                 propertyId = propertyId,
             )
         }
@@ -156,8 +161,18 @@ class PropertyRepository(
     }.fold(::ok, ::fail)
 
     /** Records that one party finished documenting an inspection phase (before signing). */
-    suspend fun markInspectionSubmitted(propertyId: String, phase: InspectionPhase): Outcome<Unit> = runCatching {
+    suspend fun markInspectionSubmitted(
+        propertyId: String,
+        phase: InspectionPhase,
+        submittedByUid: String,
+    ): Outcome<Unit> = runCatching {
         val existing = requirePropertyEntity(propertyId)
+        require(existing.landlordId == submittedByUid) {
+            when (phase) {
+                InspectionPhase.MOVE_IN -> "Only the landlord can submit the move-in inspection."
+                InspectionPhase.MOVE_OUT -> "Only the landlord can submit the move-out inspection."
+            }
+        }
         val now = System.currentTimeMillis()
         val updated = when (phase) {
             InspectionPhase.MOVE_IN -> existing.copy(
@@ -242,6 +257,7 @@ class PropertyRepository(
     }
 
     private suspend fun pushProperty(p: Property) {
+        invalidatePropertyCache(p.id)
         firestoreWrite("property") {
             firestore.collection(FirestorePaths.PROPERTIES).document(p.id)
                 .set(p.toFirestoreMap()).await()

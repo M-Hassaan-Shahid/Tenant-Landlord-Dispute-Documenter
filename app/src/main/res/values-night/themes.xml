@@ -6,6 +6,9 @@
         <item name="colorOnPrimaryContainer">@color/proofnest_on_primary_container</item>
         <item name="colorSecondary">@color/proofnest_secondary</item>
         <item name="colorSecondaryContainer">@color/proofnest_secondary_container</item>
+        <item name="colorError">@color/proofnest_error</item>
+        <item name="colorOnError">@color/white</item>
+        <item name="colorErrorContainer">@color/proofnest_error_container</item>
         <item name="android:colorBackground">@color/proofnest_background</item>
         <item name="colorSurface">@color/proofnest_surface</item>
         <item name="colorOnSurface">@color/proofnest_on_surface</item>

@@ -8,7 +8,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
-import com.example.tenant_landlorddisputedocumenter.ui.applyStatusBarInset
+import com.example.tenant_landlorddisputedocumenter.ui.applyBottomNavInset
+import com.example.tenant_landlorddisputedocumenter.ui.applyStandaloneToolbarInset
+import android.view.View
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -66,7 +68,8 @@ class CameraCaptureActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityCameraCaptureBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.toolbarCamera.applyStatusBarInset()
+        binding.toolbarCamera.applyStandaloneToolbarInset()
+        binding.cameraBar.applyBottomNavInset()
 
         propertyId = intent.getStringExtra(EXTRA_PROPERTY_ID) ?: run { finish(); return }
         itemId = intent.getStringExtra(EXTRA_ITEM_ID) ?: run { finish(); return }
@@ -125,9 +128,15 @@ class CameraCaptureActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
+    private fun setSavingUi(saving: Boolean) {
+        binding.savingOverlay.visibility = if (saving) View.VISIBLE else View.GONE
+        binding.buttonCapture.isEnabled = !saving
+        binding.toolbarCamera.isEnabled = !saving
+    }
+
     private fun capturePhoto() {
         val capture = imageCapture ?: return
-        binding.buttonCapture.isEnabled = false
+        setSavingUi(true)
 
         val photoId = Ids.newId()
         val photoDir = File(filesDir, "photos/$propertyId").apply { mkdirs() }
@@ -171,7 +180,6 @@ class CameraCaptureActivity : AppCompatActivity() {
                     container.inspectionRepository.syncPendingUploads()
 
                     runOnUiThread {
-                        Toast.makeText(this@CameraCaptureActivity, "Photo saved!", Toast.LENGTH_SHORT).show()
                         setResult(
                             RESULT_OK,
                             Intent().apply {
@@ -186,7 +194,7 @@ class CameraCaptureActivity : AppCompatActivity() {
 
             override fun onError(exc: ImageCaptureException) {
                 runOnUiThread {
-                    binding.buttonCapture.isEnabled = true
+                    setSavingUi(false)
                     Toast.makeText(this@CameraCaptureActivity, "Capture failed: ${exc.localizedMessage}", Toast.LENGTH_SHORT).show()
                 }
             }

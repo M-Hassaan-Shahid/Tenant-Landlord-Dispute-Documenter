@@ -217,33 +217,57 @@ class PdfReportGenerator(private val context: Context) {
         if (item.moveInNote.isNotBlank()) drawText(state, "Move-in note:  ${item.moveInNote}", bodyPaint)
         if (item.moveOutNote.isNotBlank()) drawText(state, "Move-out note: ${item.moveOutNote}", bodyPaint)
 
-        // Photo thumbnails: up to 4 per phase
-        renderPhotoStrip(state, "Move-in photos", item.moveInPhotoIds.mapNotNull(data.photosById::get))
-        renderPhotoStrip(state, "Move-out photos", item.moveOutPhotoIds.mapNotNull(data.photosById::get))
+        renderItemPhotoCompare(state, item, data)
         spacer(state, 10f)
     }
 
-    private fun renderPhotoStrip(state: PageState, label: String, photos: List<Photo>) {
-        if (photos.isEmpty()) return
-        state.ensureSpace(110f)
-        drawText(state, label, mutedPaint)
-        val thumbSize = 90f
-        val gap = 8f
-        var x = margin
-        photos.take(4).forEach { photo ->
-            val bmp = decodeThumb(photo, thumbSize.toInt())
-            if (bmp != null) {
-                state.canvas?.drawBitmap(bmp, null, Rect(x.toInt(), state.y.toInt(), (x + thumbSize).toInt(), (state.y + thumbSize).toInt()), null)
-                bmp.recycle()
-            }
-            // caption with timestamp + GPS underneath
-            val caption = DateUtils.formatShortDate(photo.capturedAtMillis)
-            state.canvas?.drawText(caption, x, state.y + thumbSize + 10f, mutedPaint)
-            val gps = if (photo.latitude != null) "GPS ${"%.4f".format(photo.latitude)}, ${"%.4f".format(photo.longitude ?: 0.0)}" else "GPS —"
-            state.canvas?.drawText(gps, x, state.y + thumbSize + 20f, mutedPaint)
-            x += thumbSize + gap
+    private fun renderItemPhotoCompare(state: PageState, item: ChecklistItem, data: ReportData) {
+        val moveIn = item.moveInPhotoIds.mapNotNull(data.photosById::get)
+        val moveOut = item.moveOutPhotoIds.mapNotNull(data.photosById::get)
+        if (moveIn.isEmpty() && moveOut.isEmpty()) return
+
+        val gap = 12f
+        val colW = (contentWidth - gap) / 2f
+        val thumbSize = minOf(colW - 8f, 140f)
+        val pairCount = maxOf(moveIn.size, moveOut.size).coerceAtMost(4)
+        val rowHeight = thumbSize + 28f
+
+        state.ensureSpace(20f + rowHeight * pairCount)
+        drawText(state, "Photos — move-in vs move-out", mutedPaint)
+
+        val headerY = state.y
+        state.canvas?.drawText("Move-in", margin, headerY + mutedPaint.textSize, mutedPaint)
+        state.canvas?.drawText("Move-out", margin + colW + gap, headerY + mutedPaint.textSize, mutedPaint)
+        state.y = headerY + 16f
+
+        for (i in 0 until pairCount) {
+            state.ensureSpace(rowHeight)
+            val rowY = state.y
+            moveIn.getOrNull(i)?.let { drawPhotoInColumn(state, it, margin, rowY, thumbSize) }
+            moveOut.getOrNull(i)?.let { drawPhotoInColumn(state, it, margin + colW + gap, rowY, thumbSize) }
+            state.y = rowY + rowHeight
         }
-        state.y += thumbSize + 26f
+    }
+
+    private fun drawPhotoInColumn(state: PageState, photo: Photo, x: Float, y: Float, size: Float) {
+        val bmp = decodeThumb(photo, size.toInt())
+        if (bmp != null) {
+            state.canvas?.drawBitmap(
+                bmp,
+                null,
+                Rect(x.toInt(), y.toInt(), (x + size).toInt(), (y + size).toInt()),
+                null,
+            )
+            bmp.recycle()
+        }
+        val caption = DateUtils.formatShortDate(photo.capturedAtMillis)
+        state.canvas?.drawText(caption, x, y + size + 10f, mutedPaint)
+        val gps = if (photo.latitude != null) {
+            "GPS ${"%.4f".format(photo.latitude)}, ${"%.4f".format(photo.longitude ?: 0.0)}"
+        } else {
+            "GPS —"
+        }
+        state.canvas?.drawText(gps, x, y + size + 20f, mutedPaint)
     }
 
     private fun decodeThumb(photo: Photo, side: Int): Bitmap? {
@@ -287,38 +311,80 @@ class PdfReportGenerator(private val context: Context) {
     private fun renderSignatures(state: PageState, data: ReportData) {
         state.ensureSpace(60f)
         drawText(state, "Signatures", sectionPaint)
-        renderSignatureSlot(state, "Landlord move-in", findSig(data, UserRole.LANDLORD, InspectionPhase.MOVE_IN))
-        renderSignatureSlot(state, "Tenant move-in", findSig(data, UserRole.TENANT, InspectionPhase.MOVE_IN))
-        renderSignatureSlot(state, "Landlord move-out", findSig(data, UserRole.LANDLORD, InspectionPhase.MOVE_OUT))
-        renderSignatureSlot(state, "Tenant move-out", findSig(data, UserRole.TENANT, InspectionPhase.MOVE_OUT))
+        renderSignaturePairRow(
+            state,
+            "Move-in",
+            findSig(data, UserRole.LANDLORD, InspectionPhase.MOVE_IN),
+            findSig(data, UserRole.TENANT, InspectionPhase.MOVE_IN),
+        )
+        renderSignaturePairRow(
+            state,
+            "Move-out",
+            findSig(data, UserRole.LANDLORD, InspectionPhase.MOVE_OUT),
+            findSig(data, UserRole.TENANT, InspectionPhase.MOVE_OUT),
+        )
         spacer(state, 16f)
     }
 
     private fun findSig(data: ReportData, role: UserRole, phase: InspectionPhase): Signature? =
         data.signatures.firstOrNull { it.signerRole == role && it.phase == phase }
 
-    private fun renderSignatureSlot(state: PageState, label: String, sig: Signature?) {
-        state.ensureSpace(80f)
-        drawText(state, label, bodyPaint.copy(bold = true))
+    private fun renderSignaturePairRow(
+        state: PageState,
+        phaseLabel: String,
+        landlordSig: Signature?,
+        tenantSig: Signature?,
+    ) {
+        if (landlordSig == null && tenantSig == null) return
+
+        val gap = 12f
+        val colW = (contentWidth - gap) / 2f
+        val sigWidth = minOf(colW - 8f, 220f)
+        state.ensureSpace(120f)
+
+        drawText(state, phaseLabel, bodyPaint.copy(bold = true))
+        val headerY = state.y
+        state.canvas?.drawText("Landlord", margin, headerY + bodyPaint.textSize, bodyPaint)
+        state.canvas?.drawText("Tenant", margin + colW + gap, headerY + bodyPaint.textSize, bodyPaint)
+        val contentY = headerY + 18f
+
+        val leftHeight = drawSignatureInColumn(state, landlordSig, margin, contentY, sigWidth)
+        val rightHeight = drawSignatureInColumn(state, tenantSig, margin + colW + gap, contentY, sigWidth)
+        state.y = contentY + maxOf(leftHeight, rightHeight) + 12f
+    }
+
+    private fun drawSignatureInColumn(
+        state: PageState,
+        sig: Signature?,
+        x: Float,
+        y: Float,
+        maxWidth: Float,
+    ): Float {
         if (sig == null) {
-            drawText(state, "  (not signed)", mutedPaint)
-            return
+            state.canvas?.drawText("(not signed)", x, y + bodyPaint.textSize, mutedPaint)
+            return bodyPaint.textSize + 8f
         }
-        val bmp = decodeSignatureBitmap(sig)
-        if (bmp != null) {
-            val w = 180f
-            val h = (bmp.height.toFloat() / bmp.width.toFloat()) * w
-            state.canvas?.drawBitmap(
-                bmp,
-                null,
-                Rect(margin.toInt(), state.y.toInt(), (margin + w).toInt(), (state.y + h).toInt()),
-                null,
-            )
-            bmp.recycle()
-            state.y += h + 4f
+        val bmp = decodeSignatureBitmap(sig) ?: run {
+            state.canvas?.drawText("(signature unavailable)", x, y + mutedPaint.textSize, mutedPaint)
+            return mutedPaint.textSize + 8f
         }
-        drawText(state, "Signed: ${DateUtils.formatReadable(sig.signedAtMillis)}", mutedPaint)
-        spacer(state, 6f)
+        val h = (bmp.height.toFloat() / bmp.width.toFloat()) * maxWidth
+        val drawH = minOf(h, 72f)
+        val drawW = if (h > drawH) maxWidth * (drawH / h) else maxWidth
+        state.canvas?.drawBitmap(
+            bmp,
+            null,
+            Rect(x.toInt(), y.toInt(), (x + drawW).toInt(), (y + drawH).toInt()),
+            null,
+        )
+        bmp.recycle()
+        state.canvas?.drawText(
+            "Signed ${DateUtils.formatReadable(sig.signedAtMillis)}",
+            x,
+            y + drawH + 12f,
+            mutedPaint,
+        )
+        return drawH + 22f
     }
 
     private fun renderDisputes(state: PageState, data: ReportData) {

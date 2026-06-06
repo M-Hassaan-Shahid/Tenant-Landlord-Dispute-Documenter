@@ -74,6 +74,11 @@ class CreatePropertyFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     binding.buttonCreate.isEnabled = !state.isLoading
+                    binding.buttonCreate.text = if (state.isLoading) {
+                        getString(R.string.loading)
+                    } else {
+                        getString(R.string.action_create_property)
+                    }
 
                     state.error?.let {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()

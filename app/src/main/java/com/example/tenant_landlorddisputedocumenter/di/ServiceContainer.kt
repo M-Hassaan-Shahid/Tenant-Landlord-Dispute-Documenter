@@ -1,6 +1,7 @@
 package com.example.tenant_landlorddisputedocumenter.di
 
 import android.content.Context
+import com.example.tenant_landlorddisputedocumenter.data.SyncCache
 import com.example.tenant_landlorddisputedocumenter.data.SyncCoordinator
 import com.example.tenant_landlorddisputedocumenter.data.local.ProofNestDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,7 @@ class ServiceContainer(context: Context) {
     /** IO scope for repository background work (auth role refresh, etc.). */
     val repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    val syncCache: SyncCache by lazy { SyncCache() }
     val syncCoordinator: SyncCoordinator by lazy { SyncCoordinator(this) }
 
     val db: ProofNestDatabase by lazy { ProofNestDatabase.get(appContext) }
@@ -52,7 +54,7 @@ class ServiceContainer(context: Context) {
         )
     }
     val disputeRepository: DisputeRepository by lazy {
-        DisputeRepository(db.disputeDao(), firestore)
+        DisputeRepository(db.disputeDao(), firestore, syncCache)
     }
     val propertyRepository: PropertyRepository by lazy {
         PropertyRepository(
@@ -61,6 +63,7 @@ class ServiceContainer(context: Context) {
             notificationRepository,
             inspectionRepository,
             db.disputeDao(),
+            syncCache,
         )
     }
     val notificationRepository: NotificationRepository by lazy {

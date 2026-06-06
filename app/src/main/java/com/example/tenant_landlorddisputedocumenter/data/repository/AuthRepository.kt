@@ -121,6 +121,7 @@ class AuthRepository(
             role = UserRole.from(snap.getString("role")),
             createdAtMillis = snap.getLong("createdAtMillis") ?: System.currentTimeMillis(),
             fcmToken = snap.getString("fcmToken"),
+            photoUrl = snap.getString("photoUrl"),
         )
         userDao.upsert(UserEntity.from(user))
         return user
@@ -139,10 +140,27 @@ class AuthRepository(
                     "role" to user.role.name,
                     "createdAtMillis" to user.createdAtMillis,
                     "fcmToken" to user.fcmToken,
+                    "photoUrl" to user.photoUrl,
                 ),
             ).await()
         }
     }
+
+    suspend fun updatePhotoUrl(uid: String, photoUrl: String): Outcome<Unit> = runCatching {
+        val entity = userDao.get(uid)
+            ?: refreshProfile(uid)?.let { userDao.get(uid) }
+            ?: error("Profile not found.")
+        val updated = entity.toDomain().copy(photoUrl = photoUrl)
+        userDao.upsert(UserEntity.from(updated))
+        firestoreWrite("profile photo") {
+            firestore.collection(FirestorePaths.USERS).document(uid)
+                .update("photoUrl", photoUrl).await()
+        }
+        Unit
+    }.fold(
+        onSuccess = { Outcome.Success(it) },
+        onFailure = { Outcome.Failure(it, it.localizedMessage ?: "Could not save photo.") },
+    )
 
     suspend fun updateFcmToken(uid: String, token: String) {
         runCatching {
