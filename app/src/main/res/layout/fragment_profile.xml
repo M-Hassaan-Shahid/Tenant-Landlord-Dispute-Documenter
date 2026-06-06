@@ -78,7 +78,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorPrimary"
+                        android:textColor="@color/proofnest_primary"
                         android:textStyle="bold"
                         tools:text="LANDLORD" />
 

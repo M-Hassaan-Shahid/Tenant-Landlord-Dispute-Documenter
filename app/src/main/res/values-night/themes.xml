@@ -1,12 +1,29 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.ProofNest" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#A5D6A7</item>
-        <item name="colorOnPrimary">#001F0B</item>
+        <item name="colorPrimary">@color/proofnest_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/proofnest_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/proofnest_on_primary_container</item>
+        <item name="colorSecondary">@color/proofnest_secondary</item>
+        <item name="colorSecondaryContainer">@color/proofnest_secondary_container</item>
+        <item name="android:colorBackground">@color/proofnest_background</item>
+        <item name="colorSurface">@color/proofnest_surface</item>
+        <item name="colorOnSurface">@color/proofnest_on_surface</item>
+        <item name="colorSurfaceVariant">@color/proofnest_surface_variant</item>
+        <item name="colorOutline">@color/proofnest_outline</item>
         <item name="android:statusBarColor">?attr/colorPrimary</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:navigationBarColor">@color/proofnest_surface</item>
+        <item name="shapeAppearanceCornerSmall">@style/ShapeAppearance.ProofNest.SmallComponent</item>
+        <item name="shapeAppearanceCornerMedium">@style/ShapeAppearance.ProofNest.SmallComponent</item>
+        <item name="textInputStyle">@style/Widget.ProofNest.TextInputLayout</item>
     </style>
 
     <style name="Theme.ProofNest" parent="Base.Theme.ProofNest" />
+
+    <style name="Theme.ProofNest.Main" parent="Theme.ProofNest">
+        <item name="android:colorBackground">@color/proofnest_background</item>
+    </style>
 
     <style name="Theme.ProofNest.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>

@@ -1,5 +1,6 @@
 package com.example.tenant_landlorddisputedocumenter.ui.profile
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,6 +12,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.data.local.clearSessionCache
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentProfileBinding
+import com.example.tenant_landlorddisputedocumenter.ui.auth.OnboardingActivity
 import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment() {
@@ -20,7 +22,7 @@ class ProfileFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentProfileBinding.inflate(inflater, container, false)
         return binding.root
@@ -29,10 +31,9 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val authRepository = (requireContext().applicationContext as ProofNestApplication)
-            .container.authRepository
+        val app = requireContext().applicationContext as ProofNestApplication
+        val authRepository = app.container.authRepository
 
-        // Observe through repository, not directly through DAO
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 authRepository.observeCurrentProfile().collect { user ->
@@ -49,15 +50,15 @@ class ProfileFragment : Fragment() {
         }
 
         binding.buttonLogout.setOnClickListener {
-            val app = requireContext().applicationContext as ProofNestApplication
-            viewLifecycleOwner.lifecycleScope.launch {
-                authRepository.signOut()
-                app.container.db.clearSessionCache()
-                val intent = android.content.Intent(requireContext(), com.example.tenant_landlorddisputedocumenter.ui.auth.OnboardingActivity::class.java).apply {
-                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-                startActivity(intent)
-                requireActivity().finish()
+            val appContext = requireContext().applicationContext
+            val container = (appContext as ProofNestApplication).container
+            authRepository.signOut()
+            val intent = Intent(appContext, OnboardingActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            startActivity(intent)
+            container.repositoryScope.launch {
+                container.db.clearSessionCache()
             }
         }
     }

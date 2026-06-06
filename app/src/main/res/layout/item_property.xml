@@ -39,21 +39,13 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_marginEnd="8dp"
+            android:ellipsize="end"
+            android:maxLines="2"
             android:textAppearance="@style/TextAppearance.ProofNest.CardTitle"
-            app:layout_constraintEnd_toStartOf="@id/chipStatus"
+            app:layout_constraintEnd_toStartOf="@id/iconChevron"
             app:layout_constraintStart_toEndOf="@id/propertyThumb"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="42 Gulberg III, Lahore" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/chipStatus"
-            style="@style/Widget.Material3.Chip.Assist"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:chipMinHeight="28dp"
-            app:layout_constraintEnd_toStartOf="@id/iconChevron"
-            app:layout_constraintTop_toTopOf="parent"
-            tools:text="Active" />
 
         <ImageView
             android:id="@+id/iconChevron"
@@ -71,14 +63,25 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="28dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="8dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?attr/colorPrimary"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:textColor="@color/proofnest_on_surface_variant"
+            app:layout_constraintEnd_toStartOf="@id/chipStatus"
             app:layout_constraintStart_toEndOf="@id/propertyThumb"
             app:layout_constraintTop_toBottomOf="@id/textAddress"
-            tools:text="Landlord · Move-in in progress" />
+            tools:text="Landlord · Awaiting tenant" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipStatus"
+            style="@style/Widget.Material3.Chip.Assist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:chipMinHeight="28dp"
+            app:layout_constraintBottom_toBottomOf="@id/textRole"
+            app:layout_constraintEnd_toStartOf="@id/iconChevron"
+            app:layout_constraintTop_toTopOf="@id/textRole"
+            tools:text="Awaiting tenant" />
 
         <TextView
             android:id="@+id/textRent"

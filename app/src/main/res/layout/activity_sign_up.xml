@@ -11,7 +11,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        style="@style/Widget.ProofNest.Toolbar"
+        style="@style/Widget.ProofNest.Toolbar.Back"
         app:title="@string/action_create_account" />
 
     <ScrollView

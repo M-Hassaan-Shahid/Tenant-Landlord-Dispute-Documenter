@@ -49,7 +49,16 @@
     <!-- Compact toolbar style used by every screen. -->
     <style name="Widget.ProofNest.Toolbar" parent="Widget.Material3.Toolbar">
         <item name="android:background">?attr/colorPrimary</item>
+        <item name="android:minHeight">?attr/actionBarSize</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">8dp</item>
         <item name="titleTextColor">@color/white</item>
+        <item name="titleMarginStart">4dp</item>
+        <item name="actionMenuTextColor">@color/white</item>
+        <item name="android:textColorPrimary">@color/white</item>
+    </style>
+
+    <style name="Widget.ProofNest.Toolbar.Back" parent="Widget.ProofNest.Toolbar">
         <item name="navigationIcon">@drawable/ic_nav_back_circle</item>
         <item name="navigationIconTint">@color/white</item>
     </style>

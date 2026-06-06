@@ -9,7 +9,7 @@
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
-        style="@style/Widget.ProofNest.Toolbar"
+        style="@style/Widget.ProofNest.Toolbar.Back"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         app:title="@string/action_sign_in" />
@@ -67,7 +67,7 @@
                 android:minHeight="0dp"
                 android:paddingHorizontal="0dp"
                 android:text="@string/forgot_password"
-                android:textColor="?attr/colorPrimary" />
+                android:textColor="@color/proofnest_primary" />
 
             <TextView
                 android:id="@+id/errorText"

@@ -5,10 +5,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
+import androidx.core.view.updatePadding
+import androidx.fragment.app.FragmentManager
+import com.example.tenant_landlorddisputedocumenter.ui.applyAppBarStatusBarInset
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
@@ -39,6 +46,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         container = (application as ProofNestApplication).container
 
@@ -53,11 +61,35 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        ViewCompat.setOnApplyWindowInsetsListener(binding.bottomNavigation) { view, insets ->
+            val navBar = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            view.updatePadding(bottom = navBar.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(binding.bottomNavigation)
+
+        supportFragmentManager.registerFragmentLifecycleCallbacks(
+            object : FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentViewCreated(
+                    fm: FragmentManager,
+                    f: androidx.fragment.app.Fragment,
+                    v: View,
+                    savedInstanceState: Bundle?,
+                ) {
+                    v.applyAppBarStatusBarInset()
+                }
+            },
+            true,
+        )
+
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHostFragment.navController
 
-        binding.bottomNavigation.setupWithNavController(navController)
+        binding.bottomNavigation.apply {
+            isItemActiveIndicatorEnabled = false
+            setupWithNavController(navController)
+        }
         requestNotificationPermissionIfNeeded()
         bindNotificationBadge()
         consumeDeepLink(intent)
@@ -89,6 +121,9 @@ class MainActivity : AppCompatActivity() {
         val bottomNav: BottomNavigationView = binding.bottomNavigation
         val badge = bottomNav.getOrCreateBadge(R.id.navigation_notifications).apply {
             badgeGravity = BadgeDrawable.TOP_END
+            horizontalOffset = 2
+            verticalOffset = 2
+            maxCharacterCount = 2
             isVisible = false
         }
         lifecycleScope.launch {

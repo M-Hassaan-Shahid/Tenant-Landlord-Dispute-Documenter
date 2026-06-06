@@ -46,7 +46,7 @@
             android:fontFamily="serif"
             android:text="@string/auth_welcome_title"
             android:textAppearance="?attr/textAppearanceDisplaySmall"
-            android:textColor="?attr/colorPrimary"
+            android:textColor="@color/proofnest_primary"
             android:textStyle="bold" />
 
         <TextView

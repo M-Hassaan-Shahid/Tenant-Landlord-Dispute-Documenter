@@ -315,5 +315,15 @@ class PropertyRepository(
     )
 
     private fun <T> ok(value: T): Outcome<T> = Outcome.Success(value)
-    private fun fail(t: Throwable): Outcome<Nothing> = Outcome.Failure(t, t.localizedMessage)
+    private fun fail(t: Throwable): Outcome<Nothing> = Outcome.Failure(t, userMessage(t))
+
+    private fun userMessage(t: Throwable): String {
+        val raw = t.localizedMessage.orEmpty()
+        return when {
+            raw.contains("PERMISSION_DENIED", ignoreCase = true) ||
+                raw.contains("permission", ignoreCase = true) ->
+                "Permission denied. Deploy the latest Firestore rules, or ask the landlord to re-share the invite code."
+            else -> raw.ifBlank { "Something went wrong. Please try again." }
+        }
+    }
 }

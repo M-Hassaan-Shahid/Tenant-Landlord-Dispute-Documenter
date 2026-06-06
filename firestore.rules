@@ -30,9 +30,14 @@ service cloud.firestore {
       return isSignedIn() && resource.data.tenantId == request.auth.uid;
     }
 
+    function isJoinableVacantProperty() {
+      return resource.data.tenantId == null
+        && resource.data.status in ['PENDING', 'REJECTED'];
+    }
+
     function isVacantPropertyJoin() {
       return isSignedIn()
-        && resource.data.tenantId == null
+        && isJoinableVacantProperty()
         && request.resource.data.tenantId == request.auth.uid
         && request.resource.data.landlordId == resource.data.landlordId
         && request.resource.data.inviteCode == resource.data.inviteCode;
@@ -55,7 +60,8 @@ service cloud.firestore {
     match /properties/{propertyId} {
       allow read: if isSignedIn() && (
         isPropertyLandlord() ||
-        isPropertyTenant()
+        isPropertyTenant() ||
+        isJoinableVacantProperty()
       );
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       allow update: if isSignedIn() && (
