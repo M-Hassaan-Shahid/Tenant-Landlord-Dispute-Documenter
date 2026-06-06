@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import com.example.tenant_landlorddisputedocumenter.ui.applyStatusBarInset
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -61,8 +63,10 @@ class CameraCaptureActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityCameraCaptureBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.toolbarCamera.applyStatusBarInset()
 
         propertyId = intent.getStringExtra(EXTRA_PROPERTY_ID) ?: run { finish(); return }
         itemId = intent.getStringExtra(EXTRA_ITEM_ID) ?: run { finish(); return }

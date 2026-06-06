@@ -17,16 +17,16 @@ fun MaterialToolbar.applyStatusBarInset() {
     ViewCompat.requestApplyInsets(this)
 }
 
+/** Pads the toolbar inside the bar so the green header fills the status-bar area. */
 fun AppBarLayout.applyStatusBarInset() {
-    ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInsets ->
-        val top = windowInsets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-        view.updatePadding(top = top)
-        windowInsets
+    for (i in 0 until childCount) {
+        when (val child = getChildAt(i)) {
+            is MaterialToolbar -> child.applyStatusBarInset()
+        }
     }
-    ViewCompat.requestApplyInsets(this)
 }
 
-/** Walks the fragment root and applies status-bar padding to the first [AppBarLayout]. */
+/** Walks the view tree and applies status-bar padding to toolbars / app bars. */
 fun View.applyAppBarStatusBarInset() {
     when (this) {
         is AppBarLayout -> applyStatusBarInset()

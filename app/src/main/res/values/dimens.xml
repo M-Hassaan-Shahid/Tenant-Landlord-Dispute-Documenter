@@ -6,4 +6,6 @@
     <dimen name="property_thumb_size">48dp</dimen>
     <dimen name="notif_icon_size">40dp</dimen>
     <dimen name="photo_thumb_size">52dp</dimen>
+    <!-- Space above bottom navigation on tab / nested main screens -->
+    <dimen name="bottom_content_padding">88dp</dimen>
 </resources>

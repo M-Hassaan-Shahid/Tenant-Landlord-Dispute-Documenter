@@ -40,7 +40,10 @@ service cloud.firestore {
         && isJoinableVacantProperty()
         && request.resource.data.tenantId == request.auth.uid
         && request.resource.data.landlordId == resource.data.landlordId
-        && request.resource.data.inviteCode == resource.data.inviteCode;
+        && request.resource.data.inviteCode == resource.data.inviteCode
+        && request.resource.data.status == 'PENDING_APPROVAL'
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['tenantId', 'status', 'updatedAtMillis']);
     }
 
     match /users/{userId} {
