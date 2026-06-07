@@ -99,8 +99,9 @@ class DisputeViewModel(
                     counterPhotoIds = counterPhotoId?.let { listOf(it) } ?: emptyList(),
                     counterNote = counterNote,
                 )
-                val property = propertyRepository.getProperty(propertyId)
-                if (property != null) {
+            }.onSuccess {
+                runCatching {
+                    val property = propertyRepository.getProperty(propertyId) ?: return@runCatching
                     val recipientUid = when (uid) {
                         property.landlordId -> property.tenantId
                         property.tenantId -> property.landlordId
@@ -116,7 +117,6 @@ class DisputeViewModel(
                         )
                     }
                 }
-            }.onSuccess {
                 _uiState.update { it.copy(isLoading = false, submitted = true) }
             }.onFailure { exception ->
                 _uiState.update {
@@ -133,8 +133,9 @@ class DisputeViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 disputeRepository.resolve(disputeId, uid, resolutionNote, status)
-                val property = propertyRepository.getProperty(propertyId)
-                if (property != null) {
+            }.onSuccess {
+                runCatching {
+                    val property = propertyRepository.getProperty(propertyId) ?: return@runCatching
                     val recipientUid = when (uid) {
                         property.landlordId -> property.tenantId
                         property.tenantId -> property.landlordId
@@ -150,7 +151,6 @@ class DisputeViewModel(
                         )
                     }
                 }
-            }.onSuccess {
                 _uiState.update { it.copy(isLoading = false) }
             }.onFailure { e ->
                 _uiState.update {

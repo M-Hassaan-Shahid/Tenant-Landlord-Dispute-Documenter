@@ -2,8 +2,6 @@
 
 A bilateral, timestamped property-record Android app (Kotlin · XML/Material 3 · Firebase) built as a semester final project. It prevents security-deposit disputes by letting landlords and tenants document a property's condition **together** at move-in and move-out, then auto-generates a tamper-resistant PDF report with both parties' digital signatures.
 
-The high-level vision and module breakdown live in [`ProofNest_Project_Plan.md`](ProofNest_Project_Plan.md).
-
 ---
 
 ## ✨ What works
@@ -94,7 +92,7 @@ app/src/main/java/com/example/tenant_landlorddisputedocumenter/
 
 1. Go to <https://console.firebase.google.com> and create a new project (e.g. `ProofNest`).
 2. Add an **Android app** with package name `com.example.tenant_landlorddisputedocumenter`.
-3. Download `google-services.json` and **replace** the placeholder file in `app/google-services.json`.
+3. Download `google-services.json` from Firebase Console and save it as `app/google-services.json` (see [`app/google-services.json.example`](app/google-services.json.example) for the expected shape). This file is gitignored.
 4. In Firebase Console enable:
    * Authentication → Sign-in method → **Email/Password**
    * Firestore Database → Create database (start in test mode for the demo)
@@ -114,6 +112,17 @@ app/src/main/java/com/example/tenant_landlorddisputedocumenter/
 ```
 
 The output APK lives at `app/build/outputs/apk/debug/app-debug.apk`.
+
+### Pre-built APK (for graders / quick install)
+
+A ready-to-install debug APK is committed under [`releases/ProofNest-v1.0-debug.apk`](releases/ProofNest-v1.0-debug.apk). See [`releases/README.md`](releases/README.md) for install steps.
+
+To refresh it after code changes:
+
+```bash
+./gradlew :app:assembleDebug
+cp app/build/outputs/apk/debug/app-debug.apk releases/ProofNest-v1.0-debug.apk
+```
 
 ---
 
@@ -170,8 +179,9 @@ The plan calls for these by semester end:
 - [x] Two demo accounts supported (Landlord + Tenant)
 - [x] Move-in / move-out inspection cycle wired end-to-end
 - [x] PDF report generation
-- [x] Clear architecture (this README + the project plan)
+- [x] Clear architecture (this README)
 - [x] Buildable source tree
+- [x] Pre-built APK in [`releases/`](releases/)
 - [ ] GitHub repo with this README (you push)
 - [ ] Demo video walkthrough (you record)
 

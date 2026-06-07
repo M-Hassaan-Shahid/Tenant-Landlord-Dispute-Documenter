@@ -15,8 +15,7 @@ object FirebaseAuthErrors {
             combined.contains("CONFIGURATION_NOT_FOUND", ignoreCase = true) ->
                 "Firebase sign-up is not configured for this build. Add your debug SHA-1 in " +
                     "Firebase Console → Project settings → Your Android app, enable Email/Password " +
-                    "under Authentication, then download a new google-services.json and rebuild. " +
-                    "Details: docs/FIREBASE_AUTH_SETUP.md"
+                    "under Authentication, then download a new google-services.json and rebuild."
 
             combined.contains("EMAIL_ALREADY_IN_USE", ignoreCase = true) ->
                 "An account with this email already exists. Try signing in."
