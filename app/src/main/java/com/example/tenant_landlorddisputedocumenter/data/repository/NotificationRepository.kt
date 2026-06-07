@@ -7,12 +7,10 @@ import com.example.tenant_landlorddisputedocumenter.notifications.SystemNotifica
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.NotificationDao
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.NotificationEntity
 import com.example.tenant_landlorddisputedocumenter.data.remote.FirestorePaths
-import com.example.tenant_landlorddisputedocumenter.data.remote.NotificationCloudFunctions
 import com.example.tenant_landlorddisputedocumenter.domain.model.AppNotification
 import com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.domain.model.Property
-import com.example.tenant_landlorddisputedocumenter.util.Ids
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +21,6 @@ class NotificationRepository(
     private val appContext: Context,
     private val notificationDao: NotificationDao,
     private val firestore: FirebaseFirestore,
-    private val notificationCloudFunctions: NotificationCloudFunctions,
     private val currentUserId: () -> String?,
 ) {
     private companion object {
@@ -62,22 +59,23 @@ class NotificationRepository(
             }
         }
         val notification = AppNotification(
-            id = Ids.newId(),
+            id = firestore.collection(FirestorePaths.NOTIFICATIONS).document().id,
             recipientUid = recipientUid,
             type = type,
             title = title,
             body = body,
             propertyId = propertyId,
         )
-        val remoteId = runCatching { pushNotification(notification) }
-            .getOrElse { throwable ->
-                Log.w(TAG, "Notification delivery failed; leaving the core action intact.", throwable)
-                return
-            }
-        val persisted = notification.copy(id = remoteId)
+        val persisted = notification.copy(id = notification.id)
         if (recipientUid == currentUserId()) {
             notificationDao.upsert(NotificationEntity.from(persisted))
             SystemNotificationHelper.showIfNew(appContext, persisted)
+        }
+        runCatching {
+            firestore.collection(FirestorePaths.NOTIFICATIONS).document(persisted.id)
+                .set(persisted.toFirestoreMap()).await()
+        }.onFailure { throwable ->
+            Log.w(TAG, "Notification write failed; keeping any local copy intact.", throwable)
         }
     }
 
@@ -159,9 +157,6 @@ class NotificationRepository(
         onSuccess = { SyncResult.ok() },
         onFailure = { SyncResult.from("notifications", it) },
     )
-
-    private suspend fun pushNotification(notification: AppNotification): String =
-        notificationCloudFunctions.send(notification)
 
     private fun AppNotification.toFirestoreMap(): Map<String, Any?> = mapOf(
         "id" to id,

@@ -218,8 +218,14 @@ class ReviewSignFragment : Fragment() {
                                 InspectionPhase.MOVE_OUT -> PropertyStatus.CLOSED
                             }
                             when (val statusResult = propertyRepo.updateStatus(propertyId, newStatus, uid)) {
-                                is Outcome.Failure ->
-                                    error(statusResult.userMessage ?: "Could not update property status.")
+                                is Outcome.Failure -> {
+                                    propertyRepo.refreshProperty(propertyId)
+                                    when (val retry = propertyRepo.updateStatus(propertyId, newStatus, uid)) {
+                                        is Outcome.Failure ->
+                                            error(retry.userMessage ?: statusResult.userMessage ?: "Could not update property status.")
+                                        is Outcome.Success -> Unit
+                                    }
+                                }
                                 is Outcome.Success -> Unit
                             }
                         }

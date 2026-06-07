@@ -51,6 +51,10 @@ class NotificationsFragment : Fragment() {
         val uid = authRepo.currentUserId.value ?: return
 
         viewLifecycleOwner.lifecycleScope.launch {
+            runCatching { notifRepo.syncForUser(uid) }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 notifRepo.observeForUser(uid).collect { notifications ->
                     adapter.submitList(notifications)

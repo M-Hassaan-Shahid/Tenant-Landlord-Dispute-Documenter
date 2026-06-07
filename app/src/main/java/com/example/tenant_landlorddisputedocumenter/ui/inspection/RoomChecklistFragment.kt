@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -90,13 +91,22 @@ class RoomChecklistFragment : Fragment() {
         binding.recyclerViewChecklist.applyProofNestItemAnimations()
         binding.recyclerViewChecklist.adapter = adapter
 
-        binding.buttonAddItem.setOnClickListener {
-            val name = binding.inputItemName.text.toString()
-            if (name.isNotBlank()) {
-                viewModel.addItem(roomId, name)
-                binding.inputItemName.setText("")
+        fun submitItem() {
+            val name = binding.inputItemName.text?.toString().orEmpty()
+            if (name.isBlank()) return
+            viewModel.addItem(roomId, name)
+            binding.inputItemName.setText("")
+        }
+        binding.buttonAddItem.setOnClickListener { submitItem() }
+        binding.inputItemName.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                submitItem()
+                true
+            } else {
+                false
             }
         }
+        binding.layoutAddItem.setEndIconOnClickListener { submitItem() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

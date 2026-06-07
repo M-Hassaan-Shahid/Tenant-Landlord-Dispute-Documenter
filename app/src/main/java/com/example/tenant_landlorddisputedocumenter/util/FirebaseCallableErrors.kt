@@ -2,7 +2,7 @@ package com.example.tenant_landlorddisputedocumenter.util
 
 import com.example.tenant_landlorddisputedocumenter.data.remote.FirestoreWriteException
 
-/** Maps Cloud Functions / Firestore sync failures to UI-friendly messages. */
+/** Maps backend sync failures to UI-friendly messages. */
 object FirebaseCallableErrors {
 
     fun userMessage(throwable: Throwable?): String {
@@ -19,12 +19,11 @@ object FirebaseCallableErrors {
             combined.contains("NOT_FOUND", ignoreCase = true) ||
                 combined.contains("not-found", ignoreCase = true) ||
                 combined.contains("error_notfound", ignoreCase = true) ->
-                "Cloud upload service is unavailable. Deploy Firebase Functions " +
-                    "(getCloudinaryUploadParams, sendNotification) or try again on a stable connection."
+                "Required cloud data was not found yet. Refresh and try again on a stable connection."
 
             combined.contains("failed-precondition", ignoreCase = true) &&
                 combined.contains("Cloudinary", ignoreCase = true) ->
-                "Photo upload is not configured. Set Cloudinary environment variables on Firebase Functions."
+                "Photo upload is not configured. Check the Cloudinary upload preset and try again."
 
             combined.contains("PERMISSION_DENIED", ignoreCase = true) ||
                 combined.contains("permission-denied", ignoreCase = true) ->

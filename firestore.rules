@@ -146,6 +146,21 @@ service cloud.firestore {
             .hasOnly(['status', 'updatedAtMillis']);
     }
 
+    function isValidNotificationCreate() {
+      let p = propertyData(request.resource.data.propertyId);
+      return isSignedIn()
+        && request.resource.data.propertyId is string
+        && request.resource.data.recipientUid is string
+        && request.resource.data.type is string
+        && request.resource.data.title is string
+        && request.resource.data.body is string
+        && request.resource.data.read == false
+        && request.resource.data.createdAtMillis is int
+        && (p.landlordId == request.auth.uid || p.tenantId == request.auth.uid)
+        && (request.resource.data.recipientUid == p.landlordId
+          || request.resource.data.recipientUid == p.tenantId);
+    }
+
     function signatureDocId(propertyId, phase, uid) {
       return propertyId + '_' + phase + '_' + uid;
     }
@@ -340,8 +355,8 @@ service cloud.firestore {
 
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
-      // Notifications are written only by the server (Cloud Functions / Admin SDK).
-      allow create: if false;
+      // Notifications are created directly by a property member and stored in Firestore.
+      allow create: if isValidNotificationCreate();
       // Recipient may only flip the read flag; all other fields are immutable.
       allow update: if isSignedIn()
         && resource.data.recipientUid == request.auth.uid

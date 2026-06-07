@@ -1,5 +1,6 @@
 package com.example.tenant_landlorddisputedocumenter.data.repository
 
+import android.content.Context
 import com.example.tenant_landlorddisputedocumenter.data.SyncCache
 import com.example.tenant_landlorddisputedocumenter.data.SyncResult
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.DisputeDao
@@ -18,10 +19,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 
 class DisputeRepository(
+    private val appContext: Context,
     private val disputeDao: DisputeDao,
     private val firestore: FirebaseFirestore,
     private val syncCache: SyncCache,
 ) {
+    private companion object {
+        const val PREFERENCES = "proofnest_dispute_drafts"
+        const val KEY_PENDING_PREFIX = "pending_dispute_"
+    }
+
     fun observeForProperty(propertyId: String): Flow<List<Dispute>> =
         disputeDao.observeForProperty(propertyId).map { list -> list.map { it.toDomain() } }
 
@@ -43,8 +50,9 @@ class DisputeRepository(
             "An open dispute already exists for this item."
         }
         val trimmedCounterNote = InputValidation.trimToMax(counterNote)
+        val pendingDisputeId = nextDisputeId(propertyId, itemId, raisedByUid)
         val dispute = Dispute(
-            id = Ids.newId(),
+            id = pendingDisputeId,
             propertyId = propertyId,
             itemId = itemId,
             raisedByUid = raisedByUid,
@@ -54,15 +62,11 @@ class DisputeRepository(
             counterNote = trimmedCounterNote,
         )
         disputeDao.upsert(DisputeEntity.from(dispute))
-        var lockCreated = false
         try {
             pushDisputeLock(dispute)
-            lockCreated = true
             pushDispute(dispute)
+            clearPendingDisputeId(propertyId, itemId, raisedByUid)
         } catch (e: Exception) {
-            if (lockCreated) {
-                runCatching { removeDisputeLock(dispute) }
-            }
             disputeDao.delete(dispute.id)
             throw e
         }
@@ -96,6 +100,7 @@ class DisputeRepository(
         disputeDao.upsert(DisputeEntity.from(updated))
         try {
             pushDisputeAndReleaseLock(updated)
+            clearPendingDisputeId(updated.propertyId, updated.itemId, updated.raisedByUid)
         } catch (e: Exception) {
             disputeDao.upsert(DisputeEntity.from(previous))
             throw e
@@ -106,6 +111,11 @@ class DisputeRepository(
         val remote = firestore.collection(FirestorePaths.DISPUTES)
             .whereEqualTo("propertyId", propertyId).get().await()
         val disputes = remote.documents.map { it.toDispute() }
+        disputes.forEach { dispute ->
+            if (loadPendingDisputeId(dispute.propertyId, dispute.itemId, dispute.raisedByUid) == dispute.id) {
+                clearPendingDisputeId(dispute.propertyId, dispute.itemId, dispute.raisedByUid)
+            }
+        }
         disputeDao.upsertAll(disputes.map(DisputeEntity::from))
     }.fold(
         onSuccess = { SyncResult.ok() },
@@ -135,12 +145,37 @@ class DisputeRepository(
         }
     }
 
-    private suspend fun removeDisputeLock(dispute: Dispute) {
-        firestoreWrite("dispute") {
-            firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)
-                .document(disputeLockId(dispute.propertyId, dispute.itemId))
-                .delete().await()
+    private fun loadPendingDisputeId(propertyId: String, itemId: String, raisedByUid: String): String? =
+        appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .getString(pendingKey(propertyId, itemId, raisedByUid), null)
+
+    private fun savePendingDisputeId(propertyId: String, itemId: String, raisedByUid: String, disputeId: String) {
+        appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .edit()
+            .putString(pendingKey(propertyId, itemId, raisedByUid), disputeId)
+            .apply()
+    }
+
+    private fun clearPendingDisputeId(propertyId: String, itemId: String, raisedByUid: String) {
+        appContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            .edit()
+            .remove(pendingKey(propertyId, itemId, raisedByUid))
+            .apply()
+    }
+
+    private fun pendingKey(propertyId: String, itemId: String, raisedByUid: String): String =
+        KEY_PENDING_PREFIX + propertyId + "_" + itemId + "_" + raisedByUid
+
+    private suspend fun nextDisputeId(propertyId: String, itemId: String, raisedByUid: String): String {
+        val pending = loadPendingDisputeId(propertyId, itemId, raisedByUid)
+        if (pending != null) {
+            val exists = runCatching {
+                firestore.collection(FirestorePaths.DISPUTES).document(pending).get().await().exists()
+            }.getOrDefault(false)
+            if (!exists) return pending
+            clearPendingDisputeId(propertyId, itemId, raisedByUid)
         }
+        return Ids.newId().also { savePendingDisputeId(propertyId, itemId, raisedByUid, it) }
     }
 
     private suspend fun pushDisputeAndReleaseLock(dispute: Dispute) {

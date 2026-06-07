@@ -199,9 +199,33 @@ test('notifications: the recipient cannot edit any other field', async () => {
   await assertFails(updateDoc(doc(asTenant(), 'notifications', 'notif-tenant'), { title: 'changed' }));
 });
 
-test('notifications: clients cannot create notifications', async () => {
+test('notifications: a property member can create a notification for the other member', async () => {
+  await assertSucceeds(
+    setDoc(doc(asLandlord(), 'notifications', 'n-new'), {
+      id: 'n-new',
+      recipientUid: TENANT,
+      type: 'TENANT_JOINED',
+      title: 'Hello',
+      body: 'world',
+      propertyId: 'prop-active',
+      createdAtMillis: 1,
+      read: false,
+    }),
+  );
+});
+
+test('notifications: a stranger cannot create notifications', async () => {
   await assertFails(
-    setDoc(doc(asLandlord(), 'notifications', 'n-new'), { recipientUid: LANDLORD, read: false }),
+    setDoc(doc(asStranger(), 'notifications', 'n-new2'), {
+      id: 'n-new2',
+      recipientUid: TENANT,
+      type: 'TENANT_JOINED',
+      title: 'Hello',
+      body: 'world',
+      propertyId: 'prop-active',
+      createdAtMillis: 1,
+      read: false,
+    }),
   );
 });
 
