@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.core.os.bundleOf
 import androidx.navigation.fragment.findNavController
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.R
@@ -85,10 +86,17 @@ class CreatePropertyFragment : Fragment() {
                         viewModel.clearState()
                     }
 
-                    if (state.successProperty != null) {
-                        Toast.makeText(requireContext(), "Property created!", Toast.LENGTH_SHORT).show()
+                    state.successProperty?.let { property ->
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.create_property_success, property.inviteCode),
+                            Toast.LENGTH_LONG,
+                        ).show()
                         viewModel.clearState()
-                        findNavController().navigateUp()
+                        findNavController().navigate(
+                            R.id.navigation_property_details,
+                            bundleOf("propertyId" to property.id),
+                        )
                     }
                 }
             }

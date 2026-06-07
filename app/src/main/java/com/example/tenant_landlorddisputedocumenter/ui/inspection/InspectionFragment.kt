@@ -17,6 +17,8 @@ import com.example.tenant_landlorddisputedocumenter.navigation.InspectionFragmen
 import com.example.tenant_landlorddisputedocumenter.navigation.InspectionFragmentDirections
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentInspectionBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.flow.first
@@ -55,19 +57,9 @@ class InspectionFragment : Fragment() {
         val phase = if (args.phase == "MOVE_OUT") InspectionPhase.MOVE_OUT else InspectionPhase.MOVE_IN
         viewModel.loadForProperty(propertyId, phase)
 
-        val appContainer = (requireActivity().application as ProofNestApplication).container
-        viewLifecycleOwner.lifecycleScope.launch {
-            val property = appContainer.propertyRepository.observeProperty(propertyId).first()
-            val uid = appContainer.authRepository.currentUserId.value
-            if (property != null && uid != null && property.tenantId == uid) {
-                val message = when (phase) {
-                    InspectionPhase.MOVE_IN -> getString(R.string.finish_inspection_landlord_only)
-                    InspectionPhase.MOVE_OUT -> getString(R.string.finish_inspection_move_out_landlord_only)
-                }
-                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-                findNavController().navigateUp()
-            }
-        }
+        guardPropertyAccess(propertyId, { property, uid ->
+            PropertyFlowPolicy.inspectionAccess(property, uid, phase)
+        }) { }
         refreshPropertyInBackground(propertyId)
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
@@ -158,6 +150,13 @@ class InspectionFragment : Fragment() {
             getString(R.string.finish_inspection_saving)
         } else {
             getString(R.string.finish_inspection)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.flushAllNotes()
         }
     }
 

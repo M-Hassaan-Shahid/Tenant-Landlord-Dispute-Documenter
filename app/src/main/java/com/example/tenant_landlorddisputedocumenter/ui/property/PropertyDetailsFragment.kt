@@ -23,6 +23,8 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import com.example.tenant_landlorddisputedocumenter.domain.model.Property
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.Signature
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyPrimaryAction
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyRoleUi
@@ -56,6 +58,7 @@ class PropertyDetailsFragment : Fragment() {
         viewModel = ViewModelProvider(this, PropertyDetailsViewModelFactory(appContainer))[PropertyDetailsViewModel::class.java]
 
         val propertyId = args.propertyId
+        guardPropertyAccess(propertyId, PropertyFlowPolicy::memberAccess) { }
         viewModel.loadProperty(propertyId)
 
         refreshPropertyInBackground(propertyId)

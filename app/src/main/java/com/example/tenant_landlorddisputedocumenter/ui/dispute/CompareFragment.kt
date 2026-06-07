@@ -18,7 +18,9 @@ import com.example.tenant_landlorddisputedocumenter.databinding.FragmentCompareB
 import com.example.tenant_landlorddisputedocumenter.navigation.CompareFragmentArgs
 import com.example.tenant_landlorddisputedocumenter.navigation.CompareFragmentDirections
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
 import com.example.tenant_landlorddisputedocumenter.domain.model.RatingDelta
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import kotlinx.coroutines.launch
 
@@ -56,6 +58,10 @@ class CompareFragment : Fragment() {
             onPhotoClick = { uri -> showPhotoViewer(uri) },
             onRaiseDispute = { item -> navigateToDispute(propertyId, item) },
         )
+        guardPropertyAccess(propertyId, PropertyFlowPolicy::compareAccess) { property ->
+            val uid = appContainer.authRepository.currentUserId.value
+            adapter.showRaiseDispute = PropertyFlowPolicy.canShowRaiseDispute(property, uid)
+        }
         binding.recyclerViewComparison.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewComparison.adapter = adapter
 

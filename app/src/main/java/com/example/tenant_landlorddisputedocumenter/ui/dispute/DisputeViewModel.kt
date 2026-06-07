@@ -11,6 +11,7 @@ import com.example.tenant_landlorddisputedocumenter.data.repository.PropertyRepo
 import com.example.tenant_landlorddisputedocumenter.di.ServiceContainer
 import com.example.tenant_landlorddisputedocumenter.domain.model.Dispute
 import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
+import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionEditPolicy
 import com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
 import com.example.tenant_landlorddisputedocumenter.util.InputValidation
@@ -82,6 +83,12 @@ class DisputeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
+                val propertyEntity = propertyRepository.getProperty(propertyId)
+                    ?: error("Property not found.")
+                val entity = com.example.tenant_landlorddisputedocumenter.data.local.entity.PropertyEntity.from(propertyEntity)
+                if (!InspectionEditPolicy.canRaiseDispute(entity, uid)) {
+                    error("Disputes are only available to tenants during the review window.")
+                }
                 inspectionRepository.syncPendingUploads()
                 disputeRepository.raise(
                     propertyId = propertyId,

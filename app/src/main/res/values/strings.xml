@@ -105,6 +105,8 @@
     <string name="hint_invite_code">Invite code</string>
     <string name="action_create_property">Create property</string>
     <string name="action_join_property">Join property</string>
+    <string name="create_property_success">Property created! Share invite code %1$s with your tenant.</string>
+    <string name="join_property_success">Request sent! Waiting for landlord approval.</string>
 
     <!-- Property details -->
     <string name="tile_rooms">Room setup &amp; checklist</string>

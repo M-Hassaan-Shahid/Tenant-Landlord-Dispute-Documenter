@@ -13,6 +13,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.example.tenant_landlorddisputedocumenter.navigation.RoomSetupFragmentArgs
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.tenant_landlorddisputedocumenter.R
@@ -47,6 +49,7 @@ class RoomSetupFragment : Fragment() {
         viewModel = ViewModelProvider(this, RoomSetupViewModelFactory(appContainer))[RoomSetupViewModel::class.java]
 
         val propertyId = args.propertyId
+        guardPropertyAccess(propertyId, PropertyFlowPolicy::roomSetupAccess) { }
         viewModel.loadForProperty(propertyId)
 
         refreshPropertyInBackground(propertyId)

@@ -52,4 +52,40 @@ class InspectionEditPolicyTest {
             InspectionEditPolicy.validateCapture(submitted, InspectionPhase.MOVE_IN, "landlord") != null,
         )
     }
+
+    @Test
+    fun disputeWindowOpen_afterSubmit_beforeClosed() {
+        val submitted = property(PropertyStatus.ACTIVE, moveInSubmitted = 1L)
+        val closed = submitted.copy(status = PropertyStatus.CLOSED)
+        assertTrue(InspectionEditPolicy.disputeWindowOpen(submitted))
+        assertFalse(InspectionEditPolicy.disputeWindowOpen(property(PropertyStatus.ACTIVE)))
+        assertFalse(InspectionEditPolicy.disputeWindowOpen(closed))
+    }
+
+    @Test
+    fun canRaiseDispute_tenantOnlyDuringWindow() {
+        val submitted = property(PropertyStatus.ACTIVE, moveInSubmitted = 1L)
+        assertTrue(InspectionEditPolicy.canRaiseDispute(submitted, "tenant"))
+        assertFalse(InspectionEditPolicy.canRaiseDispute(submitted, "landlord"))
+        assertFalse(InspectionEditPolicy.canRaiseDispute(property(PropertyStatus.ACTIVE), "tenant"))
+    }
+
+    @Test
+    fun validateDisputeEvidenceCapture_allowsTenantAfterSubmit() {
+        val submitted = property(PropertyStatus.ACTIVE, moveInSubmitted = 1L)
+        assertNull(
+            InspectionEditPolicy.validateDisputeEvidenceCapture(
+                submitted,
+                InspectionPhase.MOVE_IN,
+                "tenant",
+            ),
+        )
+        assertTrue(
+            InspectionEditPolicy.validateDisputeEvidenceCapture(
+                submitted,
+                InspectionPhase.MOVE_IN,
+                "landlord",
+            ) != null,
+        )
+    }
 }

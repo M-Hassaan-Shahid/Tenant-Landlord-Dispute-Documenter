@@ -10,6 +10,7 @@ import com.example.tenant_landlorddisputedocumenter.data.repository.PropertyRepo
 import com.example.tenant_landlorddisputedocumenter.di.ServiceContainer
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.ConditionRating
+import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionFinishPolicy
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionRoom
 import com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType
@@ -46,6 +47,7 @@ class InspectionViewModel(
     private val _uiState = MutableStateFlow(InspectionUiState())
     val uiState: StateFlow<InspectionUiState> = _uiState.asStateFlow()
     private val noteSaveJobs = mutableMapOf<String, Job>()
+    private val pendingNotes = mutableMapOf<String, String>()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val rooms: StateFlow<List<InspectionRoom>> = _propertyId
@@ -60,8 +62,15 @@ class InspectionViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun loadForProperty(propertyId: String, phase: InspectionPhase) {
+        val changed = _propertyId.value != null && _propertyId.value != propertyId
+        if (changed) {
+            noteSaveJobs.values.forEach { it.cancel() }
+            noteSaveJobs.clear()
+            pendingNotes.clear()
+            _uiState.value = InspectionUiState(phase = phase)
+        }
         _propertyId.value = propertyId
-        _uiState.update { it.copy(phase = phase) }
+        _uiState.update { it.copy(phase = phase, error = null, isFinished = false) }
     }
 
     fun getItemsForRoom(roomId: String): StateFlow<List<ChecklistItem>> =
@@ -76,12 +85,30 @@ class InspectionViewModel(
     }
 
     fun setNote(itemId: String, note: String) {
+        pendingNotes[itemId] = note
         noteSaveJobs[itemId]?.cancel()
         noteSaveJobs[itemId] = viewModelScope.launch {
             delay(600)
-            runCatching { inspectionRepository.setNote(itemId, _uiState.value.phase, note) }
+            flushNote(itemId)
+        }
+    }
+
+    suspend fun flushAllNotes() {
+        noteSaveJobs.values.forEach { it.cancel() }
+        noteSaveJobs.clear()
+        val snapshot = pendingNotes.toMap()
+        pendingNotes.clear()
+        val phase = _uiState.value.phase
+        snapshot.forEach { (itemId, note) ->
+            runCatching { inspectionRepository.setNote(itemId, phase, note) }
                 .onFailure { e -> _uiState.update { s -> s.copy(error = e.localizedMessage) } }
         }
+    }
+
+    private suspend fun flushNote(itemId: String) {
+        val note = pendingNotes.remove(itemId) ?: return
+        runCatching { inspectionRepository.setNote(itemId, _uiState.value.phase, note) }
+            .onFailure { e -> _uiState.update { s -> s.copy(error = e.localizedMessage) } }
     }
 
     fun addItem(roomId: String, name: String) {
@@ -115,35 +142,20 @@ class InspectionViewModel(
     }
 
     private fun submitInspection(propertyId: String, uid: String, phase: InspectionPhase) {
-        if (rooms.value.isEmpty()) {
-            _uiState.update { it.copy(error = "Add at least one room in Room Setup before inspecting.") }
-            return
-        }
-        val items = allItems.value
-        if (items.isEmpty()) {
-            _uiState.update { it.copy(error = "Add at least one checklist item before finishing.") }
-            return
-        }
-        val unrated = items.filter { item ->
-            if (phase == InspectionPhase.MOVE_IN) item.moveInRating == null else item.moveOutRating == null
-        }
-        if (unrated.isNotEmpty()) {
-            _uiState.update {
-                it.copy(error = "Rate every checklist item before finishing (${unrated.size} remaining).")
-            }
-            return
-        }
-        val hasPhasePhoto = items.any { item ->
-            if (phase == InspectionPhase.MOVE_IN) item.moveInPhotoIds.isNotEmpty()
-            else item.moveOutPhotoIds.isNotEmpty()
-        }
-        if (!hasPhasePhoto) {
-            _uiState.update {
-                it.copy(error = "Capture at least one photo for this inspection before finishing.")
-            }
-            return
-        }
         viewModelScope.launch {
+            flushAllNotes()
+            runCatching { inspectionRepository.syncPendingUploads() }
+            val hasUploaded = inspectionRepository.phaseHasUploadedPhotos(propertyId, phase)
+            val validation = InspectionFinishPolicy.validate(
+                phase = phase,
+                roomCount = rooms.value.size,
+                items = allItems.value,
+                hasUploadedPhasePhoto = hasUploaded,
+            )
+            if (!validation.ok) {
+                _uiState.update { it.copy(error = validation.error) }
+                return@launch
+            }
             _uiState.update { it.copy(isLoading = true, error = null) }
             when (val submitted = propertyRepository.markInspectionSubmitted(propertyId, phase, uid)) {
                 is Outcome.Failure -> {
@@ -152,41 +164,34 @@ class InspectionViewModel(
                 }
                 is Outcome.Success -> Unit
             }
-            val notifyResult = runCatching {
-                val property = propertyRepository.observeProperty(propertyId).first() ?: return@runCatching
-                val recipientUid = when (uid) {
-                    property.landlordId -> property.tenantId
-                    property.tenantId -> property.landlordId
-                    else -> null
-                }
-                recipientUid?.let {
-                    notificationRepository.push(
-                        recipientUid = it,
-                        type = NotificationType.INSPECTION_SUBMITTED,
-                        title = if (phase == InspectionPhase.MOVE_IN) {
-                            "Move-in ready for tenant review"
-                        } else {
-                            "Move-out ready for tenant review"
-                        },
-                        body = if (phase == InspectionPhase.MOVE_IN) {
-                            "The landlord finished documenting move-in. Please review and sign."
-                        } else {
-                            "The landlord finished documenting move-out. Please review and sign."
-                        },
-                        propertyId = propertyId,
-                    )
-                }
-            }
-            if (notifyResult.isFailure) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = notifyResult.exceptionOrNull()?.localizedMessage ?: "Could not notify the other party.",
-                    )
-                }
-                return@launch
-            }
             _uiState.update { it.copy(isLoading = false, isFinished = true) }
+            viewModelScope.launch {
+                runCatching {
+                    val property = propertyRepository.observeProperty(propertyId).first() ?: return@runCatching
+                    val recipientUid = when (uid) {
+                        property.landlordId -> property.tenantId
+                        property.tenantId -> property.landlordId
+                        else -> null
+                    }
+                    recipientUid?.let {
+                        notificationRepository.push(
+                            recipientUid = it,
+                            type = NotificationType.INSPECTION_SUBMITTED,
+                            title = if (phase == InspectionPhase.MOVE_IN) {
+                                "Move-in ready for tenant review"
+                            } else {
+                                "Move-out ready for tenant review"
+                            },
+                            body = if (phase == InspectionPhase.MOVE_IN) {
+                                "The landlord finished documenting move-in. Please review and sign."
+                            } else {
+                                "The landlord finished documenting move-out. Please review and sign."
+                            },
+                            propertyId = propertyId,
+                        )
+                    }
+                }
+            }
         }
     }
 

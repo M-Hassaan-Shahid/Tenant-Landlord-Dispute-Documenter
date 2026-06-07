@@ -42,6 +42,65 @@ object PropertyFlowPolicy {
             callerUid = currentUid.orEmpty(),
         )
 
+    fun roomSetupAccess(property: Property?, currentUid: String?): Access {
+        val base = memberAccess(property, currentUid)
+        if (!base.allowed) return base
+        if (property!!.landlordId != currentUid) {
+            return Access(false, "Only the landlord can set up rooms.")
+        }
+        if (property.status != PropertyStatus.ACTIVE) {
+            return Access(false, "Room setup is only available while the property is active.")
+        }
+        if (property.moveInInspectionSubmittedAtMillis != null) {
+            return Access(false, "Room structure is locked after move-in inspection is submitted.")
+        }
+        return Access(true)
+    }
+
+    fun inspectionAccess(
+        property: Property?,
+        currentUid: String?,
+        phase: InspectionPhase,
+    ): Access {
+        val base = memberAccess(property, currentUid)
+        if (!base.allowed) return base
+        if (property!!.landlordId != currentUid) {
+            return Access(false, "Only the landlord can document inspections.")
+        }
+        return when (phase) {
+            InspectionPhase.MOVE_IN -> when {
+                property.status == PropertyStatus.ACTIVE &&
+                    property.moveInInspectionSubmittedAtMillis == null -> Access(true)
+                else -> Access(false, "Move-in inspection is not open for this property.")
+            }
+            InspectionPhase.MOVE_OUT -> when {
+                property.status == PropertyStatus.MOVE_OUT &&
+                    property.moveOutInspectionSubmittedAtMillis == null -> Access(true)
+                else -> Access(false, "Move-out inspection is not open for this property.")
+            }
+        }
+    }
+
+    fun reviewSignAccess(
+        property: Property?,
+        currentUid: String?,
+        phase: InspectionPhase,
+    ): Access {
+        val base = memberAccess(property, currentUid)
+        if (!base.allowed) return base
+        if (property!!.status == PropertyStatus.CLOSED) {
+            return Access(false, "This property record is closed.")
+        }
+        val submitted = when (phase) {
+            InspectionPhase.MOVE_IN -> property.moveInInspectionSubmittedAtMillis != null
+            InspectionPhase.MOVE_OUT -> property.moveOutInspectionSubmittedAtMillis != null
+        }
+        if (!submitted) {
+            return Access(false, "Inspection must be submitted before review and signing.")
+        }
+        return Access(true)
+    }
+
     private fun Property.toEntity() = com.example.tenant_landlorddisputedocumenter.data.local.entity.PropertyEntity(
         id = id,
         landlordId = landlordId,

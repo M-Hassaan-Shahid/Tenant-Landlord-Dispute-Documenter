@@ -75,8 +75,13 @@ class PropertyRepository(
             status = PropertyStatus.PENDING,
         )
         propertyDao.upsert(PropertyEntity.from(property))
-        pushProperty(property)
-        registerInviteCode(property.inviteCode, property.id, property.landlordId)
+        try {
+            pushProperty(property)
+            registerInviteCode(property.inviteCode, property.id, property.landlordId)
+        } catch (e: Exception) {
+            propertyDao.delete(property.id)
+            throw e
+        }
         property
     }.fold(::ok, ::fail)
 
@@ -99,15 +104,21 @@ class PropertyRepository(
             status = PropertyStatus.PENDING_APPROVAL,
             updatedAtMillis = System.currentTimeMillis(),
         )
+        val previous = PropertyEntity.from(property)
         propertyDao.upsert(PropertyEntity.from(updated))
-        pushProperty(updated)
-        notificationRepository.push(
-            recipientUid = updated.landlordId,
-            type = NotificationType.TENANT_JOINED,
-            title = "Tenant Request",
-            body = "A tenant has requested to join ${updated.address}.",
-            propertyId = updated.id,
-        )
+        try {
+            pushProperty(updated)
+            notificationRepository.push(
+                recipientUid = updated.landlordId,
+                type = NotificationType.TENANT_JOINED,
+                title = "Tenant Request",
+                body = "A tenant has requested to join ${updated.address}.",
+                propertyId = updated.id,
+            )
+        } catch (e: Exception) {
+            propertyDao.upsert(previous)
+            throw e
+        }
         updated
     }.fold(::ok, ::fail)
 
@@ -124,15 +135,20 @@ class PropertyRepository(
         )
         propertyDao.upsert(updated)
         val domain = updated.toDomain()
-        pushProperty(domain)
-        domain.tenantId?.let { tenantId ->
-            notificationRepository.push(
-                recipientUid = tenantId,
-                type = NotificationType.TENANT_APPROVED,
-                title = "Request approved",
-                body = "You're approved for ${domain.address}. Wait for the landlord to document move-in, then review and sign.",
-                propertyId = propertyId,
-            )
+        try {
+            pushProperty(domain)
+            domain.tenantId?.let { tenantId ->
+                notificationRepository.push(
+                    recipientUid = tenantId,
+                    type = NotificationType.TENANT_APPROVED,
+                    title = "Request approved",
+                    body = "You're approved for ${domain.address}. Wait for the landlord to document move-in, then review and sign.",
+                    propertyId = propertyId,
+                )
+            }
+        } catch (e: Exception) {
+            propertyDao.upsert(existing)
+            throw e
         }
         Unit
     }.fold(::ok, ::fail)
@@ -151,15 +167,20 @@ class PropertyRepository(
         )
         propertyDao.upsert(updated)
         val domain = updated.toDomain()
-        pushProperty(domain)
-        rejectedTenantId?.let { tenantId ->
-            notificationRepository.push(
-                recipientUid = tenantId,
-                type = NotificationType.TENANT_REJECTED,
-                title = "Request declined",
-                body = "Your request to join ${domain.address} was declined.",
-                propertyId = propertyId,
-            )
+        try {
+            pushProperty(domain)
+            rejectedTenantId?.let { tenantId ->
+                notificationRepository.push(
+                    recipientUid = tenantId,
+                    type = NotificationType.TENANT_REJECTED,
+                    title = "Request declined",
+                    body = "Your request to join ${domain.address} was declined.",
+                    propertyId = propertyId,
+                )
+            }
+        } catch (e: Exception) {
+            propertyDao.upsert(existing)
+            throw e
         }
         Unit
     }.fold(::ok, ::fail)
@@ -206,7 +227,12 @@ class PropertyRepository(
             )
         }
         propertyDao.upsert(updated)
-        pushProperty(updated.toDomain())
+        try {
+            pushProperty(updated.toDomain())
+        } catch (e: Exception) {
+            propertyDao.upsert(existing)
+            throw e
+        }
         Unit
     }.fold(::ok, ::fail)
 
@@ -258,7 +284,12 @@ class PropertyRepository(
         }
         val updated = existing.copy(status = status, updatedAtMillis = System.currentTimeMillis())
         propertyDao.upsert(updated)
-        pushProperty(updated.toDomain())
+        try {
+            pushProperty(updated.toDomain())
+        } catch (e: Exception) {
+            propertyDao.upsert(existing)
+            throw e
+        }
         Unit
     }.fold(::ok, ::fail)
 
@@ -274,15 +305,20 @@ class PropertyRepository(
         )
         propertyDao.upsert(updated)
         val domain = updated.toDomain()
-        pushProperty(domain)
-        domain.tenantId?.let { tenantId ->
-            notificationRepository.push(
-                recipientUid = tenantId,
-                type = NotificationType.SIGNATURE_REQUESTED,
-                title = "Move-out inspection started",
-                body = "Your landlord started move-out for ${domain.address}.",
-                propertyId = propertyId,
-            )
+        try {
+            pushProperty(domain)
+            domain.tenantId?.let { tenantId ->
+                notificationRepository.push(
+                    recipientUid = tenantId,
+                    type = NotificationType.SIGNATURE_REQUESTED,
+                    title = "Move-out inspection started",
+                    body = "Your landlord started move-out for ${domain.address}.",
+                    propertyId = propertyId,
+                )
+            }
+        } catch (e: Exception) {
+            propertyDao.upsert(existing)
+            throw e
         }
         domain
     }.fold(::ok, ::fail)

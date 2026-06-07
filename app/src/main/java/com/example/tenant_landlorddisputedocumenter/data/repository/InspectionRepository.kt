@@ -2,6 +2,7 @@ package com.example.tenant_landlorddisputedocumenter.data.repository
 
 import android.content.Context
 import android.util.Base64
+import com.example.tenant_landlorddisputedocumenter.data.SyncCache
 import com.example.tenant_landlorddisputedocumenter.data.SyncResult
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.ItemDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.PhotoDao
@@ -48,7 +49,11 @@ class InspectionRepository(
     private val cloudinary: CloudinaryUploader,
     private val notificationRepository: NotificationRepository,
     private val firestore: FirebaseFirestore,
+    private val syncCache: SyncCache,
 ) {
+    private fun invalidateProperty(propertyId: String) {
+        syncCache.invalidateProperty(propertyId)
+    }
     // ---------------- Rooms ----------------
 
     fun observeRooms(propertyId: String): Flow<List<InspectionRoom>> =
@@ -70,7 +75,13 @@ class InspectionRepository(
             sortOrder = existing.size,
         )
         roomDao.upsert(RoomEntity.from(room))
-        pushRoom(room)
+        invalidateProperty(propertyId)
+        try {
+            pushRoom(room)
+        } catch (e: Exception) {
+            roomDao.delete(room.id)
+            throw e
+        }
         return room
     }
 
@@ -138,19 +149,33 @@ class InspectionRepository(
             name = trimmed,
         )
         itemDao.upsert(ItemEntity.from(item))
-        pushItem(item)
+        invalidateProperty(propertyId)
+        try {
+            pushItem(item)
+        } catch (e: Exception) {
+            itemDao.delete(item.id)
+            throw e
+        }
         return item
     }
 
     suspend fun updateItem(item: ChecklistItem) {
         requireRecordsEditable(item.propertyId, null)
+        val previous = itemDao.get(item.id)?.let { ItemEntity.from(it.toDomain()) }
         itemDao.upsert(ItemEntity.from(item))
-        pushItem(item)
+        invalidateProperty(item.propertyId)
+        try {
+            pushItem(item)
+        } catch (e: Exception) {
+            if (previous != null) itemDao.upsert(previous)
+            throw e
+        }
     }
 
     suspend fun setNote(itemId: String, phase: InspectionPhase, note: String) {
         val existing = itemDao.get(itemId)?.toDomain() ?: return
         requireRecordsEditable(existing.propertyId, phase)
+        val previous = ItemEntity.from(existing)
         val trimmed = InputValidation.trimToMax(note)
         val updated = when (phase) {
             InspectionPhase.MOVE_IN -> existing.copy(
@@ -162,13 +187,20 @@ class InspectionRepository(
                 moveOutTimestamp = System.currentTimeMillis(),
             )
         }
+        invalidateProperty(existing.propertyId)
         itemDao.upsert(ItemEntity.from(updated))
-        pushItem(updated)
+        try {
+            pushItem(updated)
+        } catch (e: Exception) {
+            itemDao.upsert(previous)
+            throw e
+        }
     }
 
     suspend fun setRating(itemId: String, phase: InspectionPhase, rating: ConditionRating) {
         val existing = itemDao.get(itemId)?.toDomain() ?: return
         requireRecordsEditable(existing.propertyId, phase)
+        val previous = ItemEntity.from(existing)
         val updated = when (phase) {
             InspectionPhase.MOVE_IN -> existing.copy(
                 moveInRating = rating,
@@ -179,8 +211,14 @@ class InspectionRepository(
                 moveOutTimestamp = System.currentTimeMillis(),
             )
         }
+        invalidateProperty(existing.propertyId)
         itemDao.upsert(ItemEntity.from(updated))
-        pushItem(updated)
+        try {
+            pushItem(updated)
+        } catch (e: Exception) {
+            itemDao.upsert(previous)
+            throw e
+        }
     }
 
     // ---------------- Photos ----------------
@@ -190,8 +228,9 @@ class InspectionRepository(
 
     suspend fun savePhoto(photo: Photo) {
         requireRecordsEditable(photo.propertyId, photo.phase)
-        photoDao.upsert(PhotoEntity.from(photo))
         val item = itemDao.get(photo.itemId)?.toDomain() ?: return
+        val previousItem = ItemEntity.from(item)
+        photoDao.upsert(PhotoEntity.from(photo))
         val withPhotoId = when (photo.phase) {
             InspectionPhase.MOVE_IN -> item.copy(
                 moveInPhotoIds = (item.moveInPhotoIds + photo.id).distinct(),
@@ -202,8 +241,33 @@ class InspectionRepository(
                 moveOutTimestamp = item.moveOutTimestamp ?: photo.capturedAtMillis,
             )
         }
+        invalidateProperty(photo.propertyId)
         itemDao.upsert(ItemEntity.from(withPhotoId))
-        pushItem(withPhotoId)
+        try {
+            pushItem(withPhotoId)
+        } catch (e: Exception) {
+            photoDao.delete(photo.id)
+            itemDao.upsert(previousItem)
+            throw e
+        }
+    }
+
+    suspend fun saveDisputeEvidencePhoto(photo: Photo) {
+        val property = requireProperty(photo.propertyId)
+        InspectionEditPolicy.validateDisputeEvidenceCapture(property, photo.phase, photo.capturedByUid)
+            ?.let { error(it) }
+        photoDao.upsert(PhotoEntity.from(photo))
+        invalidateProperty(photo.propertyId)
+    }
+
+    suspend fun phaseHasUploadedPhotos(propertyId: String, phase: InspectionPhase): Boolean {
+        val items = itemDao.listForProperty(propertyId)
+        val photoIds = items.flatMap { entity ->
+            val item = entity.toDomain()
+            if (phase == InspectionPhase.MOVE_IN) item.moveInPhotoIds else item.moveOutPhotoIds
+        }
+        if (photoIds.isEmpty()) return false
+        return photoDao.getMany(photoIds).any { it.uploaded || !it.remoteUrl.isNullOrBlank() }
     }
 
     suspend fun getPhotos(ids: List<String>): List<Photo> =
@@ -279,6 +343,7 @@ class InspectionRepository(
         )
         val remoteUrl = uploadSignatureImage(signature)
         val withUrl = signature.copy(remoteUrl = remoteUrl)
+        invalidateProperty(propertyId)
         signatureDao.upsert(SignatureEntity.from(withUrl))
         pushSignature(withUrl)
 
@@ -352,9 +417,20 @@ class InspectionRepository(
             }
 
             val rooms = roomsDeferred.await().documents.map { it.toRoom() }
+            val remoteRoomIds = rooms.map { it.id }.toSet()
+            roomDao.listForProperty(propertyId)
+                .filter { it.id !in remoteRoomIds }
+                .forEach { roomDao.delete(it.id) }
             roomDao.upsertAll(rooms.map(RoomEntity::from))
 
             val items = itemsDeferred.await().documents.map { it.toItem() }
+            val remoteItemIds = items.map { it.id }.toSet()
+            itemDao.listForProperty(propertyId)
+                .filter { it.id !in remoteItemIds }
+                .forEach { orphan ->
+                    photoDao.deleteForItems(listOf(orphan.id))
+                    itemDao.delete(orphan.id)
+                }
             itemDao.upsertAll(items.map(ItemEntity::from))
 
             val sigs = sigsDeferred.await().documents.map { it.toSignature() }
@@ -370,10 +446,6 @@ class InspectionRepository(
             signatureDao.upsertAll(sigEntities)
 
             val photos = photosDeferred.await().documents.map { it.toPhoto() }
-            val remotePhotoIds = photos.map { it.id }.toSet()
-            photoDao.listForProperty(propertyId)
-                .filter { it.uploaded && it.id !in remotePhotoIds }
-                .forEach { photoDao.delete(it.id) }
             for (p in photos) {
                 val existing = photoDao.get(p.id)
                 val toSave = if (existing != null) p.copy(localUri = existing.localUri) else p
@@ -411,6 +483,31 @@ class InspectionRepository(
         val property = requireProperty(propertyId)
         InspectionEditPolicy.validateCapture(property, phase, callerUid)?.let { error(it) }
     }
+
+    suspend fun validateDisputeEvidenceCapture(propertyId: String, phase: InspectionPhase, callerUid: String) {
+        val property = requireProperty(propertyId)
+        InspectionEditPolicy.validateDisputeEvidenceCapture(property, phase, callerUid)?.let { error(it) }
+    }
+
+    /** Pulls signature docs only — safe to call after signing before status transitions. */
+    suspend fun syncSignaturesForProperty(propertyId: String): SyncResult = runCatching {
+        val sigs = firestore.collection(FirestorePaths.SIGNATURES)
+            .whereEqualTo("propertyId", propertyId).get().await()
+            .documents.map { it.toSignature() }
+        val sigEntities = sigs.map { sig ->
+            val existing = signatureDao.listForProperty(propertyId).find { it.id == sig.id }
+            val png = when {
+                existing != null && existing.pngBase64.isNotBlank() -> existing.pngBase64
+                sig.pngBase64.isNotBlank() -> sig.pngBase64
+                else -> ""
+            }
+            SignatureEntity.from(sig.copy(pngBase64 = png))
+        }
+        signatureDao.upsertAll(sigEntities)
+    }.fold(
+        onSuccess = { SyncResult.ok() },
+        onFailure = { SyncResult.from("signatures", it) },
+    )
 
     private fun signatureDocumentId(
         propertyId: String,

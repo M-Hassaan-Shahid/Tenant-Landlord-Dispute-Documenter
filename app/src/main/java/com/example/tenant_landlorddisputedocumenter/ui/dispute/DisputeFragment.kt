@@ -20,6 +20,8 @@ import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentDisputeBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.inspection.CameraCaptureActivity
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import android.net.Uri
@@ -74,6 +76,7 @@ class DisputeFragment : Fragment() {
         itemId = args.itemId
         val itemName = args.itemName
 
+        guardPropertyAccess(propertyId, PropertyFlowPolicy::memberAccess) { }
         viewModel.loadForProperty(propertyId)
         viewModel.targetItemId = itemId
 
@@ -97,6 +100,7 @@ class DisputeFragment : Fragment() {
                 putExtra(CameraCaptureActivity.EXTRA_PROPERTY_ID, propertyId)
                 putExtra(CameraCaptureActivity.EXTRA_ITEM_ID, itemId)
                 putExtra(CameraCaptureActivity.EXTRA_PHASE, disputePhase.name)
+                putExtra(CameraCaptureActivity.EXTRA_CAPTURE_MODE, CameraCaptureActivity.MODE_DISPUTE_EVIDENCE)
             }
             captureLauncher.launch(intent)
         }

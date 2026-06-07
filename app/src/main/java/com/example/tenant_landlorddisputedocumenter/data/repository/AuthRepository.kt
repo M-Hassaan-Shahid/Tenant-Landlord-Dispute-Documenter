@@ -76,7 +76,7 @@ class AuthRepository(
             role = role,
         )
         try {
-            writeProfile(user)
+            writeProfile(user, includePrivateFields = true)
         } catch (e: Exception) {
             runCatching { firebaseUser.delete().await() }
             throw e
@@ -108,11 +108,44 @@ class AuthRepository(
 
     /** Pull the latest profile from Firestore into Room and return it. */
     suspend fun refreshProfile(uid: String): User? {
+        val currentUid = auth.currentUser?.uid
+        val user = if (uid == currentUid) {
+            loadPrivateProfile(uid)?.also { runCatching { writePublicProfile(it) } }
+        } else {
+            loadPublicProfile(uid)
+        } ?: return null
+        userDao.upsert(UserEntity.from(user))
+        return user
+    }
+
+    /** Persist a new/updated profile to both Firestore and Room. */
+    suspend fun writeProfile(user: User, includePrivateFields: Boolean = false) {
+        userDao.upsert(UserEntity.from(user))
+        if (includePrivateFields) {
+            firestoreWrite("user profile") {
+                firestore.collection(FirestorePaths.USERS).document(user.uid).set(
+                    mapOf(
+                        "email" to user.email,
+                        "displayName" to user.displayName,
+                        "phone" to user.phone,
+                        "cnic" to user.cnic,
+                        "role" to user.role.name,
+                        "createdAtMillis" to user.createdAtMillis,
+                        "fcmToken" to user.fcmToken,
+                        "photoUrl" to user.photoUrl,
+                    ),
+                ).await()
+            }
+        }
+        writePublicProfile(user)
+    }
+
+    private suspend fun loadPrivateProfile(uid: String): User? {
         val snap = runCatching {
             firestore.collection(FirestorePaths.USERS).document(uid).get().await()
         }.getOrNull() ?: return null
-        if (!snap.exists()) return null
-        val user = User(
+        if (!snap.exists()) return loadPublicProfile(uid)
+        return User(
             uid = uid,
             email = snap.getString("email").orEmpty(),
             displayName = snap.getString("displayName").orEmpty(),
@@ -123,24 +156,34 @@ class AuthRepository(
             fcmToken = snap.getString("fcmToken"),
             photoUrl = snap.getString("photoUrl"),
         )
-        userDao.upsert(UserEntity.from(user))
-        return user
     }
 
-    /** Persist a new/updated profile to both Firestore and Room. */
-    suspend fun writeProfile(user: User) {
-        userDao.upsert(UserEntity.from(user))
-        firestoreWrite("user profile") {
-            firestore.collection(FirestorePaths.USERS).document(user.uid).set(
+    private suspend fun loadPublicProfile(uid: String): User? {
+        val snap = runCatching {
+            firestore.collection(FirestorePaths.PUBLIC_PROFILES).document(uid).get().await()
+        }.getOrNull() ?: return null
+        if (!snap.exists()) return null
+        val cached = userDao.get(uid)
+        return User(
+            uid = uid,
+            email = cached?.email.orEmpty(),
+            displayName = snap.getString("displayName").orEmpty(),
+            phone = cached?.phone.orEmpty(),
+            cnic = "",
+            role = UserRole.from(snap.getString("role")),
+            createdAtMillis = cached?.createdAtMillis ?: System.currentTimeMillis(),
+            fcmToken = cached?.fcmToken,
+            photoUrl = snap.getString("photoUrl"),
+        )
+    }
+
+    private suspend fun writePublicProfile(user: User) {
+        firestoreWrite("public profile") {
+            firestore.collection(FirestorePaths.PUBLIC_PROFILES).document(user.uid).set(
                 mapOf(
-                    "email" to user.email,
                     "displayName" to user.displayName,
-                    "phone" to user.phone,
-                    "cnic" to user.cnic,
-                    "role" to user.role.name,
-                    "createdAtMillis" to user.createdAtMillis,
-                    "fcmToken" to user.fcmToken,
                     "photoUrl" to user.photoUrl,
+                    "role" to user.role.name,
                 ),
             ).await()
         }
@@ -156,6 +199,7 @@ class AuthRepository(
             firestore.collection(FirestorePaths.USERS).document(uid)
                 .update("photoUrl", photoUrl).await()
         }
+        writePublicProfile(updated)
         Unit
     }.fold(
         onSuccess = { Outcome.Success(it) },

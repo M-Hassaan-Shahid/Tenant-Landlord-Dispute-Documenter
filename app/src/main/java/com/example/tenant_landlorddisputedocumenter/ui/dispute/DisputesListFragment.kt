@@ -21,6 +21,8 @@ import com.example.tenant_landlorddisputedocumenter.databinding.FragmentDisputes
 import com.example.tenant_landlorddisputedocumenter.domain.model.Dispute
 import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import kotlinx.coroutines.flow.combine
@@ -53,6 +55,7 @@ class DisputesListFragment : Fragment() {
         viewModel = ViewModelProvider(this, DisputeViewModelFactory(appContainer))[DisputeViewModel::class.java]
 
         val propertyId = args.propertyId
+        guardPropertyAccess(propertyId, PropertyFlowPolicy::memberAccess) { }
         viewModel.loadForProperty(propertyId)
 
         refreshPropertyInBackground(propertyId)

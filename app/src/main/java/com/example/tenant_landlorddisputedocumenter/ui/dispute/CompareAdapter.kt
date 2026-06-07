@@ -24,7 +24,14 @@ class CompareAdapter(
     private val loadPhotos: suspend (List<String>) -> List<Photo>,
     private val onPhotoClick: (Uri?) -> Unit,
     private val onRaiseDispute: (ChecklistItem) -> Unit,
+    showRaiseDispute: Boolean = false,
 ) : ListAdapter<ChecklistItem, CompareAdapter.CompareViewHolder>(CompareDiffCallback()) {
+
+    var showRaiseDispute: Boolean = showRaiseDispute
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CompareViewHolder {
         val binding = ItemCompareBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -32,7 +39,7 @@ class CompareAdapter(
     }
 
     override fun onBindViewHolder(holder: CompareViewHolder, position: Int) {
-        holder.bind(getItem(position), scope, loadPhotos, onPhotoClick, onRaiseDispute)
+        holder.bind(getItem(position), scope, loadPhotos, onPhotoClick, onRaiseDispute, this.showRaiseDispute)
     }
 
     class CompareViewHolder(private val binding: ItemCompareBinding) :
@@ -44,6 +51,7 @@ class CompareAdapter(
             loadPhotos: suspend (List<String>) -> List<Photo>,
             onPhotoClick: (Uri?) -> Unit,
             onRaiseDispute: (ChecklistItem) -> Unit,
+            showRaiseDispute: Boolean,
         ) {
             val ctx = binding.root.context
             binding.textItemName.text = item.name
@@ -84,7 +92,7 @@ class CompareAdapter(
             binding.chipChange.setTextColor(ContextCompat.getColor(ctx, chipText))
 
             binding.buttonRaiseDispute.visibility =
-                if (delta == RatingDelta.DEGRADED) View.VISIBLE else View.GONE
+                if (showRaiseDispute && delta == RatingDelta.DEGRADED) View.VISIBLE else View.GONE
             binding.buttonRaiseDispute.setOnClickListener { onRaiseDispute(item) }
         }
 

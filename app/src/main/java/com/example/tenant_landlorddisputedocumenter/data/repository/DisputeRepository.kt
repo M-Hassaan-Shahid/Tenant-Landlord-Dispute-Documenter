@@ -54,7 +54,12 @@ class DisputeRepository(
             counterNote = trimmedCounterNote,
         )
         disputeDao.upsert(DisputeEntity.from(dispute))
-        pushDisputeWithLock(dispute)
+        try {
+            pushDisputeWithLock(dispute)
+        } catch (e: Exception) {
+            disputeDao.delete(dispute.id)
+            throw e
+        }
         return dispute
     }
 
@@ -73,13 +78,22 @@ class DisputeRepository(
             "You cannot resolve a dispute you raised."
         }
         val trimmedNote = InputValidation.trimToMax(resolutionNote)
+        if (status == DisputeStatus.RESOLVED && trimmedNote.isBlank()) {
+            error("Please provide a resolution note when marking a dispute resolved.")
+        }
         val updated = existing.copy(
             resolutionNote = trimmedNote,
             status = status,
             resolvedAtMillis = System.currentTimeMillis(),
         )
+        val previous = existing
         disputeDao.upsert(DisputeEntity.from(updated))
-        pushDisputeAndReleaseLock(updated)
+        try {
+            pushDisputeAndReleaseLock(updated)
+        } catch (e: Exception) {
+            disputeDao.upsert(DisputeEntity.from(previous))
+            throw e
+        }
     }
 
     suspend fun syncForProperty(propertyId: String): SyncResult = runCatching {

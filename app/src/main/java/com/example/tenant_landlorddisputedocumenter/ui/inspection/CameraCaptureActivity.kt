@@ -37,6 +37,9 @@ class CameraCaptureActivity : AppCompatActivity() {
         const val EXTRA_PROPERTY_ID = "propertyId"
         const val EXTRA_ITEM_ID = "itemId"
         const val EXTRA_PHASE = "phase"
+        const val EXTRA_CAPTURE_MODE = "captureMode"
+        const val MODE_INSPECTION = "inspection"
+        const val MODE_DISPUTE_EVIDENCE = "dispute_evidence"
         const val RESULT_PHOTO_ID = "result_photo_id"
         const val RESULT_PHOTO_URI = "result_photo_uri"
     }
@@ -49,6 +52,7 @@ class CameraCaptureActivity : AppCompatActivity() {
     private lateinit var propertyId: String
     private lateinit var itemId: String
     private lateinit var phase: InspectionPhase
+    private var captureMode: String = MODE_INSPECTION
 
     private val requestCameraPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -75,6 +79,7 @@ class CameraCaptureActivity : AppCompatActivity() {
         itemId = intent.getStringExtra(EXTRA_ITEM_ID) ?: run { finish(); return }
         phase = if (intent.getStringExtra(EXTRA_PHASE) == "MOVE_OUT") InspectionPhase.MOVE_OUT
         else InspectionPhase.MOVE_IN
+        captureMode = intent.getStringExtra(EXTRA_CAPTURE_MODE) ?: MODE_INSPECTION
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         validateCaptureAccess()
@@ -112,7 +117,11 @@ class CameraCaptureActivity : AppCompatActivity() {
                 return@launch
             }
             runCatching {
-                container.inspectionRepository.validateCapture(propertyId, phase, uid)
+                if (captureMode == MODE_DISPUTE_EVIDENCE) {
+                    container.inspectionRepository.validateDisputeEvidenceCapture(propertyId, phase, uid)
+                } else {
+                    container.inspectionRepository.validateCapture(propertyId, phase, uid)
+                }
             }.onFailure {
                 Toast.makeText(
                     this@CameraCaptureActivity,
@@ -198,7 +207,11 @@ class CameraCaptureActivity : AppCompatActivity() {
                     )
 
                     val container = (application as ProofNestApplication).container
-                    container.inspectionRepository.savePhoto(photo)
+                    if (captureMode == MODE_DISPUTE_EVIDENCE) {
+                        container.inspectionRepository.saveDisputeEvidencePhoto(photo)
+                    } else {
+                        container.inspectionRepository.savePhoto(photo)
+                    }
                     container.inspectionRepository.syncPendingUploads()
 
                     runOnUiThread {

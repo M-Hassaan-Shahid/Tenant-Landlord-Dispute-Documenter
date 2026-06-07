@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.core.os.bundleOf
 import androidx.navigation.fragment.findNavController
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
@@ -56,10 +57,17 @@ class JoinPropertyFragment : Fragment() {
                         Toast.makeText(requireContext(), state.error, Toast.LENGTH_SHORT).show()
                         viewModel.clearState()
                     }
-                    if (state.successProperty != null) {
-                        Toast.makeText(requireContext(), "Joined! Waiting for landlord approval.", Toast.LENGTH_LONG).show()
+                    state.successProperty?.let { property ->
+                        Toast.makeText(
+                            requireContext(),
+                            R.string.join_property_success,
+                            Toast.LENGTH_LONG,
+                        ).show()
                         viewModel.clearState()
-                        findNavController().navigateUp()
+                        findNavController().navigate(
+                            R.id.navigation_property_details,
+                            bundleOf("propertyId" to property.id),
+                        )
                     }
                 }
             }

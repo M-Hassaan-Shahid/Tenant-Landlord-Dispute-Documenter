@@ -6,7 +6,7 @@ import com.example.tenant_landlorddisputedocumenter.notifications.SystemNotifica
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.NotificationDao
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.NotificationEntity
 import com.example.tenant_landlorddisputedocumenter.data.remote.FirestorePaths
-import com.example.tenant_landlorddisputedocumenter.data.remote.firestoreWrite
+import com.example.tenant_landlorddisputedocumenter.data.remote.NotificationCloudFunctions
 import com.example.tenant_landlorddisputedocumenter.domain.model.AppNotification
 import com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
@@ -22,6 +22,7 @@ class NotificationRepository(
     private val appContext: Context,
     private val notificationDao: NotificationDao,
     private val firestore: FirebaseFirestore,
+    private val notificationCloudFunctions: NotificationCloudFunctions,
     private val currentUserId: () -> String?,
 ) {
     fun observeForUser(uid: String): Flow<List<AppNotification>> =
@@ -63,10 +64,11 @@ class NotificationRepository(
             body = body,
             propertyId = propertyId,
         )
-        pushNotification(notification)
+        val remoteId = pushNotification(notification)
+        val persisted = notification.copy(id = remoteId)
         if (recipientUid == currentUserId()) {
-            notificationDao.upsert(NotificationEntity.from(notification))
-            SystemNotificationHelper.showIfNew(appContext, notification)
+            notificationDao.upsert(NotificationEntity.from(persisted))
+            SystemNotificationHelper.showIfNew(appContext, persisted)
         }
     }
 
@@ -149,12 +151,8 @@ class NotificationRepository(
         onFailure = { SyncResult.from("notifications", it) },
     )
 
-    private suspend fun pushNotification(notification: AppNotification) {
-        firestoreWrite("notification") {
-            firestore.collection(FirestorePaths.NOTIFICATIONS).document(notification.id)
-                .set(notification.toFirestoreMap()).await()
-        }
-    }
+    private suspend fun pushNotification(notification: AppNotification): String =
+        notificationCloudFunctions.send(notification)
 
     private fun AppNotification.toFirestoreMap(): Map<String, Any?> = mapOf(
         "id" to id,

@@ -8,22 +8,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Free replacement for Firebase Storage (which now requires the Blaze plan).
- *
- * Performs an unsigned multipart upload to Cloudinary and returns the public `secure_url`,
- * which slots straight into the existing `remoteUrl` fields on photos/signatures. Downloads
- * elsewhere already stream from that URL, so no other changes are needed.
- *
- * Config comes from [CloudinaryConfig]. Uses only HttpURLConnection — no extra dependency.
+ * Uploads evidence photos/signatures to Cloudinary using server-signed parameters.
  */
 class CloudinaryUploader(
-    private val cloudName: String = CloudinaryConfig.CLOUD_NAME,
-    private val uploadPreset: String = CloudinaryConfig.UPLOAD_PRESET,
+    private val signatureProvider: CloudinarySignatureProvider,
 ) {
-    /** Uploads [file] and returns the public HTTPS URL. [folder] groups assets (e.g. "photos"). */
     suspend fun upload(file: File, folder: String): String = withContext(Dispatchers.IO) {
+        val signed = signatureProvider.fetch(folder)
         val boundary = "----ProofNest${System.currentTimeMillis()}"
-        val endpoint = URL("https://api.cloudinary.com/v1_1/$cloudName/auto/upload")
+        val endpoint = URL("https://api.cloudinary.com/v1_1/${signed.cloudName}/auto/upload")
         val conn = (endpoint.openConnection() as HttpURLConnection).apply {
             doOutput = true
             requestMethod = "POST"
@@ -36,13 +29,15 @@ class CloudinaryUploader(
                 out.write("Content-Disposition: form-data; name=\"$name\"\r\n\r\n".toByteArray())
                 out.write((value + "\r\n").toByteArray())
             }
-            field("upload_preset", uploadPreset)
-            if (folder.isNotBlank()) field("folder", folder)
+            field("api_key", signed.apiKey)
+            field("timestamp", signed.timestamp.toString())
+            field("signature", signed.signature)
+            if (signed.folder.isNotBlank()) field("folder", signed.folder)
 
             out.write(("--$boundary\r\n").toByteArray())
             out.write(
                 ("Content-Disposition: form-data; name=\"file\"; filename=\"${file.name}\"\r\n")
-                    .toByteArray()
+                    .toByteArray(),
             )
             out.write("Content-Type: application/octet-stream\r\n\r\n".toByteArray())
             file.inputStream().use { it.copyTo(out) }

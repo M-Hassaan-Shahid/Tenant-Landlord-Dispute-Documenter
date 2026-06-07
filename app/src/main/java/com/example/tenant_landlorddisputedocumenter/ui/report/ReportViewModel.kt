@@ -32,16 +32,12 @@ class ReportViewModel(
             _uiState.update { it.copy(isGenerating = true, error = null, reportFile = null) }
             runCatching {
                 val sync = syncCoordinator.syncPropertyForReport(propertyId)
+                if (!sync.succeeded) {
+                    error(sync.errors.joinToString("\n"))
+                }
                 reportRepository.validateReportReady(propertyId)
                 val file = reportRepository.generateReport(propertyId)
-                if (!sync.succeeded && file != null) {
-                    // Report generated from local cache; cloud sync had partial failures.
-                    file to sync.errors.firstOrNull()
-                } else if (!sync.succeeded) {
-                    error(sync.errors.joinToString("\n"))
-                } else {
-                    file to null
-                }
+                file to null
             }
                 .onSuccess { (file, syncWarning) ->
                     if (file != null) {

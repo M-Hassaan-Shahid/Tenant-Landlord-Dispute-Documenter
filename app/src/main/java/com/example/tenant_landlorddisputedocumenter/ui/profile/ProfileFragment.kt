@@ -77,13 +77,19 @@ class ProfileFragment : Fragment() {
         binding.buttonLogout.setOnClickListener {
             val appContext = requireContext().applicationContext
             val appContainer = (appContext as ProofNestApplication).container
-            authRepository.signOut()
-            val intent = Intent(appContext, OnboardingActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            }
-            startActivity(intent)
-            appContainer.repositoryScope.launch {
+            binding.buttonLogout.isEnabled = false
+            viewLifecycleOwner.lifecycleScope.launch {
+                val uid = authRepository.currentUserId.value
+                if (uid != null) {
+                    appContainer.syncCache.invalidateUser(uid)
+                }
+                appContainer.syncCache.clearAll()
                 appContainer.db.clearSessionCache()
+                authRepository.signOut()
+                val intent = Intent(appContext, OnboardingActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                startActivity(intent)
             }
         }
     }

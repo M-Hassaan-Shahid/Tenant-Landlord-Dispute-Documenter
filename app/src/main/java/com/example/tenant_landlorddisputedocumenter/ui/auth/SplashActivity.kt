@@ -36,6 +36,9 @@ class SplashActivity : BaseActivity() {
             val startMs = System.currentTimeMillis()
 
             val uid = container.firebaseAuth.currentUser?.uid
+            if (uid != null) {
+                runCatching { container.syncCoordinator.syncDashboardForUser(uid, force = true) }
+            }
 
             val elapsed = System.currentTimeMillis() - startMs
             if (elapsed < minDisplayMs) delay(minDisplayMs - elapsed)

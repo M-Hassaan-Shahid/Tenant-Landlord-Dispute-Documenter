@@ -20,6 +20,8 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.ui.dispute.showDisputeItemPicker
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import kotlinx.coroutines.flow.combine
@@ -52,6 +54,10 @@ class ReviewSignFragment : Fragment() {
 
         val propertyId = args.propertyId
         val phase = if (args.phase == "MOVE_OUT") InspectionPhase.MOVE_OUT else InspectionPhase.MOVE_IN
+
+        guardPropertyAccess(propertyId, { property, uid ->
+            PropertyFlowPolicy.reviewSignAccess(property, uid, phase)
+        }) { }
 
         binding.toolbar.title = if (phase == InspectionPhase.MOVE_OUT) {
             getString(R.string.review_sign_move_out)
@@ -195,6 +201,7 @@ class ReviewSignFragment : Fragment() {
                     inspectionRepo.saveSignature(
                         propertyId, uid, role, phase, signatureBase64, notifyRecipientUid,
                     )
+                    inspectionRepo.syncSignaturesForProperty(propertyId)
 
                     if (property.tenantId != null) {
                         val fullySigned = inspectionRepo.isPhaseSignedByBoth(

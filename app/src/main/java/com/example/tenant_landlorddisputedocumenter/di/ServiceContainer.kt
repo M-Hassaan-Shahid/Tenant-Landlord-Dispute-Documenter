@@ -13,7 +13,9 @@ import com.example.tenant_landlorddisputedocumenter.data.repository.InspectionRe
 import com.example.tenant_landlorddisputedocumenter.data.repository.NotificationRepository
 import com.example.tenant_landlorddisputedocumenter.data.repository.PropertyRepository
 import com.example.tenant_landlorddisputedocumenter.data.repository.ReportRepository
+import com.example.tenant_landlorddisputedocumenter.data.remote.CloudinarySignatureProvider
 import com.example.tenant_landlorddisputedocumenter.data.remote.CloudinaryUploader
+import com.example.tenant_landlorddisputedocumenter.data.remote.NotificationCloudFunctions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -36,7 +38,9 @@ class ServiceContainer(context: Context) {
     val db: ProofNestDatabase by lazy { ProofNestDatabase.get(appContext) }
     val firebaseAuth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
     val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
-    val cloudinary: CloudinaryUploader by lazy { CloudinaryUploader() }
+    val cloudinarySignatureProvider: CloudinarySignatureProvider by lazy { CloudinarySignatureProvider() }
+    val cloudinary: CloudinaryUploader by lazy { CloudinaryUploader(cloudinarySignatureProvider) }
+    val notificationCloudFunctions: NotificationCloudFunctions by lazy { NotificationCloudFunctions() }
 
     val authRepository: AuthRepository by lazy {
         AuthRepository(firebaseAuth, firestore, db.userDao(), repositoryScope)
@@ -52,6 +56,7 @@ class ServiceContainer(context: Context) {
             cloudinary,
             notificationRepository,
             firestore,
+            syncCache,
         )
     }
     val disputeRepository: DisputeRepository by lazy {
@@ -72,6 +77,7 @@ class ServiceContainer(context: Context) {
             appContext,
             db.notificationDao(),
             firestore,
+            notificationCloudFunctions,
             currentUserId = { firebaseAuth.currentUser?.uid },
         )
     }

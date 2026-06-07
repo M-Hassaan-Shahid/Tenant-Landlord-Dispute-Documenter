@@ -14,6 +14,22 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/properties/$(propertyId)).data;
     }
 
+    function publicProfile(uid) {
+      return get(/databases/$(database)/documents/publicProfiles/$(uid)).data;
+    }
+
+    function userRole(uid) {
+      return publicProfile(uid).role;
+    }
+
+    function isLandlordUser() {
+      return isSignedIn() && userRole(request.auth.uid) == 'LANDLORD';
+    }
+
+    function isTenantUser() {
+      return isSignedIn() && userRole(request.auth.uid) == 'TENANT';
+    }
+
     function isPropertyMember(propertyId) {
       let p = propertyData(propertyId);
       return isSignedIn() && (
@@ -37,6 +53,7 @@ service cloud.firestore {
 
     function isVacantPropertyJoin() {
       return isSignedIn()
+        && isTenantUser()
         && isJoinableVacantProperty()
         && request.resource.data.tenantId == request.auth.uid
         && request.resource.data.landlordId == resource.data.landlordId
@@ -225,6 +242,7 @@ service cloud.firestore {
         isJoinableVacantProperty()
       );
       allow create: if isSignedIn()
+        && isLandlordUser()
         && request.resource.data.landlordId == request.auth.uid
         && request.resource.data.status == 'PENDING'
         && request.resource.data.tenantId == null;
@@ -332,7 +350,7 @@ service cloud.firestore {
 
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
-      allow create: if isSignedIn() && isValidNotificationCreate();
+      allow create: if false;
       allow update: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
     }
   }

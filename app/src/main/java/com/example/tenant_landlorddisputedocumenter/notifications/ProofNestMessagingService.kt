@@ -41,6 +41,9 @@ class ProofNestMessagingService : FirebaseMessagingService() {
         val uid = app.container.firebaseAuth.currentUser?.uid ?: return
         scope.launch {
             app.container.notificationRepository.syncForUser(uid)
+            propertyId?.let { id ->
+                runCatching { app.container.syncCoordinator.refreshPropertyData(id, force = true) }
+            }
         }
     }
 }

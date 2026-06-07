@@ -18,7 +18,9 @@ import com.example.tenant_landlorddisputedocumenter.navigation.ReportFragmentArg
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentReportBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
 import com.example.tenant_landlorddisputedocumenter.domain.model.RatingDelta
+import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -47,6 +49,7 @@ class ReportFragment : Fragment() {
         viewModel = ViewModelProvider(this, ReportViewModelFactory(appContainer))[ReportViewModel::class.java]
 
         val propertyId = args.propertyId
+        guardPropertyAccess(propertyId, PropertyFlowPolicy::reportAccess) { }
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
 
