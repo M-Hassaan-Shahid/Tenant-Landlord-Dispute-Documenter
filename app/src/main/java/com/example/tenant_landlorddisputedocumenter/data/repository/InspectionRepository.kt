@@ -113,15 +113,10 @@ class InspectionRepository(
         }
     }
 
-    /** True when room/item structure must not change (post move-in sign or inspection underway). */
+    /** True when room/item structure must not change (after move-in submit, or during move-out/closed). */
     suspend fun isStructureLocked(propertyId: String, status: PropertyStatus): Boolean {
-        if (status.inspectionStarted) return true
-        val items = itemDao.listForProperty(propertyId).map { it.toDomain() }
-        return when (status) {
-            PropertyStatus.ACTIVE -> items.any { it.hasPhaseProgress(InspectionPhase.MOVE_IN) }
-            PropertyStatus.MOVE_OUT -> items.any { it.hasPhaseProgress(InspectionPhase.MOVE_OUT) }
-            else -> false
-        }
+        val property = requireProperty(propertyId)
+        return !InspectionEditPolicy.canEditStructure(property)
     }
 
     suspend fun listRooms(propertyId: String): List<InspectionRoom> =
@@ -487,7 +482,7 @@ class InspectionRepository(
 
     private suspend fun requireStructureEditable(property: PropertyEntity) {
         require(property.status != PropertyStatus.CLOSED) { "Property record is closed." }
-        require(isStructureLocked(property.id, property.status).not()) {
+        require(InspectionEditPolicy.canEditStructure(property)) {
             "Room and checklist structure is locked for this property."
         }
     }

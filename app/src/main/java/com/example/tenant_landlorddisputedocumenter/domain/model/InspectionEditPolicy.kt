@@ -5,6 +5,23 @@ import com.example.tenant_landlorddisputedocumenter.data.local.entity.PropertyEn
 /** Central rules for when inspection data may be edited or captured. */
 object InspectionEditPolicy {
 
+    /**
+     * Room/checklist structure stays editable while move-in is active and before submission.
+     * Once move-in is submitted, or when the property is in move-out/closed, structure edits
+     * must stop.
+     */
+    fun canEditStructure(property: PropertyEntity): Boolean {
+        return when (property.status) {
+            PropertyStatus.ACTIVE -> property.moveInInspectionSubmittedAtMillis == null
+            PropertyStatus.OCCUPIED,
+            PropertyStatus.MOVE_OUT,
+            PropertyStatus.CLOSED -> false
+            PropertyStatus.PENDING,
+            PropertyStatus.PENDING_APPROVAL,
+            PropertyStatus.REJECTED -> true
+        }
+    }
+
     fun canEditRecords(property: PropertyEntity): Boolean {
         return when (property.status) {
             PropertyStatus.ACTIVE -> property.moveInInspectionSubmittedAtMillis == null
