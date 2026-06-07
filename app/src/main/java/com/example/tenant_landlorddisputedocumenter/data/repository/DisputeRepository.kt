@@ -54,9 +54,15 @@ class DisputeRepository(
             counterNote = trimmedCounterNote,
         )
         disputeDao.upsert(DisputeEntity.from(dispute))
+        var lockCreated = false
         try {
-            pushDisputeWithLock(dispute)
+            pushDisputeLock(dispute)
+            lockCreated = true
+            pushDispute(dispute)
         } catch (e: Exception) {
+            if (lockCreated) {
+                runCatching { removeDisputeLock(dispute) }
+            }
             disputeDao.delete(dispute.id)
             throw e
         }
@@ -106,26 +112,34 @@ class DisputeRepository(
         onFailure = { SyncResult.from("disputes", it) },
     )
 
-    private suspend fun pushDisputeWithLock(dispute: Dispute) {
+    private suspend fun pushDisputeLock(dispute: Dispute) {
         syncCache.invalidateProperty(dispute.propertyId)
-        firestoreWrite("dispute") {
-            val batch = firestore.batch()
-            val lockRef = firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)
+        firestoreWrite("dispute lock") {
+            firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)
                 .document(disputeLockId(dispute.propertyId, dispute.itemId))
-            batch.set(
-                lockRef,
-                mapOf(
-                    "propertyId" to dispute.propertyId,
-                    "itemId" to dispute.itemId,
-                    "disputeId" to dispute.id,
-                    "raisedByUid" to dispute.raisedByUid,
-                ),
-            )
-            batch.set(
-                firestore.collection(FirestorePaths.DISPUTES).document(dispute.id),
-                dispute.toFirestoreMap(),
-            )
-            batch.commit().await()
+                .set(
+                    mapOf(
+                        "propertyId" to dispute.propertyId,
+                        "itemId" to dispute.itemId,
+                        "disputeId" to dispute.id,
+                        "raisedByUid" to dispute.raisedByUid,
+                    ),
+                ).await()
+        }
+    }
+
+    private suspend fun pushDispute(dispute: Dispute) {
+        firestoreWrite("dispute") {
+            firestore.collection(FirestorePaths.DISPUTES).document(dispute.id)
+                .set(dispute.toFirestoreMap()).await()
+        }
+    }
+
+    private suspend fun removeDisputeLock(dispute: Dispute) {
+        firestoreWrite("dispute") {
+            firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)
+                .document(disputeLockId(dispute.propertyId, dispute.itemId))
+                .delete().await()
         }
     }
 
@@ -133,9 +147,13 @@ class DisputeRepository(
         syncCache.invalidateProperty(dispute.propertyId)
         firestoreWrite("dispute") {
             val batch = firestore.batch()
-            batch.set(
+            // Update only the keys the security rule permits on resolve; a full
+            // set() would touch immutable fields and be rejected by the rule.
+            batch.update(
                 firestore.collection(FirestorePaths.DISPUTES).document(dispute.id),
-                dispute.toFirestoreMap(),
+                "status", dispute.status.name,
+                "resolutionNote", dispute.resolutionNote,
+                "resolvedAtMillis", dispute.resolvedAtMillis,
             )
             batch.delete(
                 firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)

@@ -36,7 +36,7 @@ import com.example.tenant_landlorddisputedocumenter.data.local.entity.UserEntity
         NotificationEntity::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class ProofNestDatabase : RoomDatabase() {
@@ -80,7 +80,6 @@ abstract class ProofNestDatabase : RoomDatabase() {
                     NAME,
                 )
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { instance = it }
             }

@@ -1,6 +1,7 @@
 package com.example.tenant_landlorddisputedocumenter.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.example.tenant_landlorddisputedocumenter.data.SyncResult
 import com.example.tenant_landlorddisputedocumenter.notifications.SystemNotificationHelper
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.NotificationDao
@@ -25,6 +26,10 @@ class NotificationRepository(
     private val notificationCloudFunctions: NotificationCloudFunctions,
     private val currentUserId: () -> String?,
 ) {
+    private companion object {
+        const val TAG = "NotificationRepository"
+    }
+
     fun observeForUser(uid: String): Flow<List<AppNotification>> =
         notificationDao.observeForUser(uid).map { list -> list.map { it.toDomain() } }
 
@@ -64,7 +69,11 @@ class NotificationRepository(
             body = body,
             propertyId = propertyId,
         )
-        val remoteId = pushNotification(notification)
+        val remoteId = runCatching { pushNotification(notification) }
+            .getOrElse { throwable ->
+                Log.w(TAG, "Notification delivery failed; leaving the core action intact.", throwable)
+                return
+            }
         val persisted = notification.copy(id = remoteId)
         if (recipientUid == currentUserId()) {
             notificationDao.upsert(NotificationEntity.from(persisted))

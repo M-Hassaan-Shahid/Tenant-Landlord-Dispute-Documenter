@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Typeface
@@ -25,7 +26,23 @@ object PhotoStamper {
     )
 
     fun stampInPlace(file: File, stamp: Stamp): File {
-        val source = BitmapFactory.decodeFile(file.absolutePath) ?: return file
+        // Downsample full-resolution camera shots to avoid OutOfMemory on a 12MP+ image
+        // (decoding at native size and then allocating a second canvas bitmap can exceed
+        // the per-app heap on low-end devices).
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return file
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = calcInSampleSize(bounds.outWidth, bounds.outHeight, MAX_DIMEN)
+        }
+        val decoded = BitmapFactory.decodeFile(file.absolutePath, decodeOptions) ?: return file
+        // BitmapFactory does not apply EXIF orientation, so rotate the pixels upright before
+        // drawing — otherwise the stamp lands on the wrong edge and the saved photo is sideways.
+        val orientation = runCatching {
+            ExifInterface(file.absolutePath)
+                .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        val source = applyOrientation(decoded, orientation)
         val output = Bitmap.createBitmap(source.width, source.height, source.config ?: Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         canvas.drawBitmap(source, 0f, 0f, null)
@@ -82,8 +99,46 @@ object PhotoStamper {
                 exif.setAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF, if (lon >= 0) "E" else "W")
             }
             exif.setAttribute(ExifInterface.TAG_USER_COMMENT, "ProofNest by=${stamp.capturedByUid}")
+            // Pixels were already rotated upright before re-encoding; record NORMAL so viewers
+            // don't rotate the image a second time.
+            exif.setAttribute(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL.toString(),
+            )
             exif.saveAttributes()
         }
+    }
+
+    /** Largest dimension (px) kept when stamping; bounds memory use on high-res captures. */
+    private const val MAX_DIMEN = 2048
+
+    private fun calcInSampleSize(width: Int, height: Int, maxDim: Int): Int {
+        var sample = 1
+        while (maxOf(width, height) / sample > maxDim) {
+            sample *= 2
+        }
+        return sample
+    }
+
+    private fun applyOrientation(bitmap: Bitmap, orientation: Int): Bitmap {
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.postRotate(90f); matrix.preScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.postRotate(270f); matrix.preScale(-1f, 1f)
+            }
+            else -> return bitmap
+        }
+        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (rotated != bitmap) bitmap.recycle()
+        return rotated
     }
 
     /** Convert a signed decimal lat/lon to the EXIF "deg/1,min/1,sec/100" rational format. */

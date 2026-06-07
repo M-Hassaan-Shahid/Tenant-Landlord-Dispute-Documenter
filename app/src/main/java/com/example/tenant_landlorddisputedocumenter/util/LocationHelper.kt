@@ -8,7 +8,9 @@ import android.location.Location
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Thin wrapper around FusedLocationProvider so callers don't have to deal with Tasks or permissions
@@ -26,8 +28,20 @@ object LocationHelper {
     suspend fun currentLocation(context: Context): Location? {
         if (!hasPermission(context)) return null
         val client = LocationServices.getFusedLocationProviderClient(context)
-        return runCatching {
-            client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
-        }.getOrNull()
+        // getCurrentLocation can stall indefinitely when the device cannot obtain a fix,
+        // so bound it and cancel the underlying request once we stop waiting.
+        val cancellation = CancellationTokenSource()
+        return try {
+            withTimeoutOrNull(LOCATION_TIMEOUT_MS) {
+                runCatching {
+                    client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellation.token)
+                        .await()
+                }.getOrNull()
+            }
+        } finally {
+            cancellation.cancel()
+        }
     }
+
+    private const val LOCATION_TIMEOUT_MS = 8_000L
 }

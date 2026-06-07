@@ -38,9 +38,6 @@ playServicesLocation = "21.3.0"
 # Coil image loading
 coil = "2.7.0"
 
-# Accompanist permissions
-accompanistPermissions = "0.36.0"
-
 # Security Crypto for invite code / local secrets
 securityCrypto = "1.1.0-alpha06"
 
@@ -126,9 +123,6 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 
 # Coil
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
-
-# Permissions helper
-accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
 
 # Security Crypto
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }

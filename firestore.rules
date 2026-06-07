@@ -194,26 +194,6 @@ service cloud.firestore {
             .hasAny(['id', 'landlordId', 'inviteCode', 'status', 'tenantId']);
     }
 
-    function isValidNotificationCreate() {
-      let data = request.resource.data;
-      let propId = data.propertyId;
-      return data.recipientUid is string
-        && data.title is string
-        && data.body is string
-        && (
-          (data.recipientUid == request.auth.uid && data.type == 'LEASE_ENDING')
-          || (
-            propId != null
-            && isPropertyMember(propId)
-            && data.recipientUid != request.auth.uid
-            && (
-              propertyData(propId).landlordId == data.recipientUid
-              || propertyData(propId).tenantId == data.recipientUid
-            )
-          )
-        );
-    }
-
     match /users/{userId} {
       allow read: if isOwner(userId);
       allow create: if isOwner(userId);
@@ -228,18 +208,28 @@ service cloud.firestore {
     }
 
     match /inviteCodes/{code} {
-      allow read: if isSignedIn();
+      // Lookup by exact code is required to join a property; enumeration is not.
+      allow get: if isSignedIn();
+      allow list: if false;
       allow create: if isSignedIn()
-        && request.resource.data.landlordId == request.auth.uid;
+        && request.resource.data.landlordId == request.auth.uid
+        && !exists(/databases/$(database)/documents/inviteCodes/$(code));
       allow update, delete: if isSignedIn()
         && resource.data.landlordId == request.auth.uid;
     }
 
     match /properties/{propertyId} {
-      allow read: if isSignedIn() && (
+      // Single-doc reads may hit a joinable vacant property (tenant resolving an
+      // invite code); list/query results must be limited to the caller's own
+      // properties so a tenant cannot enumerate other landlords' listings.
+      allow get: if isSignedIn() && (
         isPropertyLandlord() ||
         isPropertyTenant() ||
         isJoinableVacantProperty()
+      );
+      allow list: if isSignedIn() && (
+        isPropertyLandlord() ||
+        isPropertyTenant()
       );
       allow create: if isSignedIn()
         && isLandlordUser()
@@ -350,8 +340,14 @@ service cloud.firestore {
 
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+      // Notifications are written only by the server (Cloud Functions / Admin SDK).
       allow create: if false;
-      allow update: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+      // Recipient may only flip the read flag; all other fields are immutable.
+      allow update: if isSignedIn()
+        && resource.data.recipientUid == request.auth.uid
+        && request.resource.data.recipientUid == resource.data.recipientUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if false;
     }
   }
 }

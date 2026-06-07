@@ -83,6 +83,8 @@ class DisputeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
+                // Refresh first so the dispute window check matches the latest move-out state.
+                propertyRepository.refreshProperty(propertyId)
                 val propertyEntity = propertyRepository.getProperty(propertyId)
                     ?: error("Property not found.")
                 val entity = com.example.tenant_landlorddisputedocumenter.data.local.entity.PropertyEntity.from(propertyEntity)

@@ -1,12 +1,16 @@
 package com.example.tenant_landlorddisputedocumenter.data
 
+import java.util.concurrent.ConcurrentHashMap
+
 /**
  * In-memory TTL cache so we show Room data immediately and skip redundant Firestore pulls.
  * Invalidated on explicit pull-to-refresh (force sync) or after local writes.
+ *
+ * Accessed concurrently from multiple sync coroutines, so the backing maps are thread-safe.
  */
 class SyncCache {
-    private val propertySyncedAt = mutableMapOf<String, Long>()
-    private val userSyncedAt = mutableMapOf<String, Long>()
+    private val propertySyncedAt = ConcurrentHashMap<String, Long>()
+    private val userSyncedAt = ConcurrentHashMap<String, Long>()
 
     fun isPropertyFresh(propertyId: String, ttlMs: Long = PROPERTY_TTL_MS): Boolean {
         val last = propertySyncedAt[propertyId] ?: return false

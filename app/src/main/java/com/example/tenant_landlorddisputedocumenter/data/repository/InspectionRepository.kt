@@ -31,11 +31,13 @@ import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import com.example.tenant_landlorddisputedocumenter.data.remote.CloudinaryUploader
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
 
@@ -341,7 +343,9 @@ class InspectionRepository(
             pngBase64 = pngBase64,
             signedAtMillis = System.currentTimeMillis(),
         )
-        val remoteUrl = runCatching { uploadSignatureImage(signature) }.getOrNull()
+        // Signature docs store only the remoteUrl (not the PNG), so the upload must
+        // succeed — otherwise the counterparty could never render this signature.
+        val remoteUrl = uploadSignatureImage(signature)
         val persisted = signature.copy(remoteUrl = remoteUrl)
         invalidateProperty(propertyId)
         signatureDao.upsert(SignatureEntity.from(persisted))
@@ -398,7 +402,9 @@ class InspectionRepository(
             if (entity.pngBase64.isNotBlank()) continue
             val url = entity.remoteUrl ?: continue
             runCatching {
-                val bytes = URL(url).openStream().use { it.readBytes() }
+                val bytes = withContext(Dispatchers.IO) {
+                    URL(url).openStream().use { it.readBytes() }
+                }
                 val encoded = Base64.encodeToString(bytes, Base64.NO_WRAP)
                 signatureDao.upsert(entity.copy(pngBase64 = encoded))
             }
@@ -559,11 +565,15 @@ class InspectionRepository(
             val file = File(context.filesDir, "photos/${entity.propertyId}/${entity.id}.jpg")
             val localPath = entity.localUri?.removePrefix("file://")
             if (localPath != null && File(localPath).exists()) continue
-            runCatching {
-                file.parentFile?.mkdirs()
-                URL(remoteUrl).openStream().use { input ->
-                    file.outputStream().use { output -> input.copyTo(output) }
+            val downloaded = runCatching {
+                withContext(Dispatchers.IO) {
+                    file.parentFile?.mkdirs()
+                    URL(remoteUrl).openStream().use { input ->
+                        file.outputStream().use { output -> input.copyTo(output) }
+                    }
                 }
+            }.isSuccess
+            if (downloaded) {
                 photoDao.upsert(entity.copy(localUri = "file://${file.absolutePath}"))
                 count++
             }

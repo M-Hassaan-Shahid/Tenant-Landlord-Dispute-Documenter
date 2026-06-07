@@ -66,6 +66,22 @@ class PropertyFlowPolicyTest {
     }
 
     @Test
+    fun reportAccess_availableFromOccupiedOnward() {
+        // Report is blocked while the move-in record is still being built.
+        assertFalse(PropertyFlowPolicy.reportAccess(property(PropertyStatus.ACTIVE), "tenant").allowed)
+        // Once both parties have signed move-in (OCCUPIED) the report becomes available.
+        assertTrue(PropertyFlowPolicy.reportAccess(property(PropertyStatus.OCCUPIED), "tenant").allowed)
+        assertTrue(PropertyFlowPolicy.reportAccess(property(PropertyStatus.OCCUPIED), "landlord").allowed)
+        assertTrue(PropertyFlowPolicy.reportAccess(property(PropertyStatus.MOVE_OUT), "tenant").allowed)
+        assertTrue(PropertyFlowPolicy.reportAccess(property(PropertyStatus.CLOSED), "landlord").allowed)
+    }
+
+    @Test
+    fun reportAccess_deniesNonMemberEvenWhenOccupied() {
+        assertFalse(PropertyFlowPolicy.reportAccess(property(PropertyStatus.OCCUPIED), "stranger").allowed)
+    }
+
+    @Test
     fun reviewSignAccess_requiresSubmittedInspection() {
         val active = property(PropertyStatus.ACTIVE)
         assertFalse(

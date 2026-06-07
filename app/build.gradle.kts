@@ -50,6 +50,11 @@ android {
     }
 }
 
+ksp {
+    // Export Room schemas so migrations can be validated and tested.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // AndroidX core
     implementation(libs.androidx.core.ktx)

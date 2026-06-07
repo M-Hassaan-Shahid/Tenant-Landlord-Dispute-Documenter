@@ -30,8 +30,14 @@ object PropertyFlowPolicy {
     fun reportAccess(property: Property?, currentUid: String?): Access {
         val base = memberAccess(property, currentUid)
         if (!base.allowed) return base
-        if (property!!.status != PropertyStatus.MOVE_OUT && property.status != PropertyStatus.CLOSED) {
-            return Access(false, "Report is available during move-out or after the record is closed.")
+        // The move-in record is complete and both-signed once a property is OCCUPIED,
+        // so the report is available from that point onward (not only at move-out).
+        val status = property!!.status
+        if (status != PropertyStatus.OCCUPIED &&
+            status != PropertyStatus.MOVE_OUT &&
+            status != PropertyStatus.CLOSED
+        ) {
+            return Access(false, "Report is available once the move-in record is complete.")
         }
         return Access(true)
     }

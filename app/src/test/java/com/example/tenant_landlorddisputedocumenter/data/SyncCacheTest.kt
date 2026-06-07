@@ -1,5 +1,8 @@
 package com.example.tenant_landlorddisputedocumenter.data
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,5 +33,30 @@ class SyncCacheTest {
         cache.clearAll()
         assertFalse(cache.isPropertyFresh("prop-1"))
         assertFalse(cache.isUserFresh("user-1"))
+    }
+
+    @Test
+    fun concurrent_marks_are_all_retained() {
+        val cache = SyncCache()
+        val threads = 8
+        val perThread = 2000
+        val pool = Executors.newFixedThreadPool(threads)
+        val done = CountDownLatch(threads)
+        repeat(threads) { t ->
+            pool.execute {
+                try {
+                    for (i in 0 until perThread) cache.markPropertySynced("p-$t-$i")
+                } finally {
+                    done.countDown()
+                }
+            }
+        }
+        assertTrue(done.await(30, TimeUnit.SECONDS))
+        pool.shutdown()
+        // A non-thread-safe backing map can drop entries during concurrent resize; the
+        // thread-safe cache must retain every key written.
+        for (t in 0 until threads) {
+            for (i in 0 until perThread) assertTrue(cache.isPropertyFresh("p-$t-$i"))
+        }
     }
 }

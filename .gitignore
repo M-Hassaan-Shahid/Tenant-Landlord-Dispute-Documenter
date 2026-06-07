@@ -75,6 +75,7 @@ database-debug.log
 pubsub-debug.log
 firestore-debug.log
 firebase/functions/node_modules/
+firebase/firestore-tests/node_modules/
 firebase/functions/lib/
 firebase/functions/.runtimeconfig.json
 

@@ -25,6 +25,45 @@ async function assertPropertyMember(propertyId, uid) {
   return data;
 }
 
+const FOLDER_SEGMENT = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Validate that the caller is allowed to upload into `folder` and return a
+ * normalized, safe folder path. The client supplies a structured folder; we
+ * re-derive authorization from it server-side so a signed-in user cannot mint
+ * upload credentials for arbitrary paths or another member's property.
+ *
+ * Allowed shapes:
+ *   avatars/<uid>                 -> uid must equal the caller
+ *   signatures/<propertyId>       -> caller must be a property member
+ *   photos/<propertyId>/<itemId>  -> caller must be a property member
+ */
+async function authorizeUploadFolder(folder, uid) {
+  const parts = folder.split("/");
+  if (parts.length < 2 || !parts.every((seg) => FOLDER_SEGMENT.test(seg))) {
+    throw new HttpsError("invalid-argument", "Invalid upload folder.");
+  }
+  const kind = parts[0];
+  if (kind === "avatars") {
+    if (parts.length !== 2 || parts[1] !== uid) {
+      throw new HttpsError("permission-denied", "Avatars are self-only.");
+    }
+  } else if (kind === "signatures") {
+    if (parts.length !== 2) {
+      throw new HttpsError("invalid-argument", "Invalid signatures folder.");
+    }
+    await assertPropertyMember(parts[1], uid);
+  } else if (kind === "photos") {
+    if (parts.length !== 3) {
+      throw new HttpsError("invalid-argument", "Invalid photos folder.");
+    }
+    await assertPropertyMember(parts[1], uid);
+  } else {
+    throw new HttpsError("permission-denied", "Unknown upload folder.");
+  }
+  return parts.join("/");
+}
+
 /**
  * Mint signed Cloudinary upload params. Set env vars before deploy:
  *   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
@@ -42,11 +81,13 @@ exports.getCloudinaryUploadParams = onCall(async (request) => {
       "Cloudinary is not configured. Set CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.",
     );
   }
-  const folder = String(request.data?.folder || "");
+  const requested = String(request.data?.folder || "");
+  if (!requested) {
+    throw new HttpsError("invalid-argument", "folder is required.");
+  }
+  const folder = await authorizeUploadFolder(requested, request.auth.uid);
   const timestamp = Math.round(Date.now() / 1000);
-  const toSign = folder
-    ? `folder=${folder}&timestamp=${timestamp}`
-    : `timestamp=${timestamp}`;
+  const toSign = `folder=${folder}&timestamp=${timestamp}`;
   const signature = crypto
     .createHash("sha1")
     .update(toSign + apiSecret)
