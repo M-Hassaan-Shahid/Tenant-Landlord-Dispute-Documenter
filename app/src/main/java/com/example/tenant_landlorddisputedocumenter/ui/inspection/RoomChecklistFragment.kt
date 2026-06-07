@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import com.bumptech.glide.Glide
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.ui.applyProofNestItemAnimations
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import kotlinx.coroutines.launch
 
@@ -86,6 +87,7 @@ class RoomChecklistFragment : Fragment() {
             onCapturePhoto = { item -> launchCamera(item) },
         )
         binding.recyclerViewChecklist.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewChecklist.applyProofNestItemAnimations()
         binding.recyclerViewChecklist.adapter = adapter
 
         binding.buttonAddItem.setOnClickListener {

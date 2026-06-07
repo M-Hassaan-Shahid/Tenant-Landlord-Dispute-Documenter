@@ -20,9 +20,12 @@ import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentProfileBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.ui.auth.OnboardingActivity
+import com.example.tenant_landlorddisputedocumenter.ui.fadeInIfNeeded
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import com.example.tenant_landlorddisputedocumenter.util.InputValidation
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class ProfileFragment : Fragment() {
@@ -79,22 +82,35 @@ class ProfileFragment : Fragment() {
             val appContainer = (appContext as ProofNestApplication).container
             binding.buttonLogout.isEnabled = false
             viewLifecycleOwner.lifecycleScope.launch {
-                val uid = authRepository.currentUserId.value
-                if (uid != null) {
-                    appContainer.syncCache.invalidateUser(uid)
+                try {
+                    val uid = authRepository.currentUserId.value
+                    withContext(Dispatchers.IO) {
+                        if (uid != null) {
+                            appContainer.syncCache.invalidateUser(uid)
+                        }
+                        appContainer.syncCache.clearAll()
+                        appContainer.db.clearSessionCache()
+                    }
+                    authRepository.signOut()
+                    startActivity(
+                        Intent(appContext, OnboardingActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        },
+                    )
+                } catch (e: Exception) {
+                    binding.buttonLogout.isEnabled = true
+                    Toast.makeText(
+                        requireContext(),
+                        e.localizedMessage ?: getString(R.string.profile_logout_failed),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
-                appContainer.syncCache.clearAll()
-                appContainer.db.clearSessionCache()
-                authRepository.signOut()
-                val intent = Intent(appContext, OnboardingActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                }
-                startActivity(intent)
             }
         }
     }
 
     private fun bindAvatar(photoUrl: String?, initials: String) {
+        val changed = photoUrl != currentPhotoUrl
         currentPhotoUrl = photoUrl
         if (!photoUrl.isNullOrBlank()) {
             binding.textAvatar.visibility = View.GONE
@@ -103,11 +119,13 @@ class ProfileFragment : Fragment() {
                 .load(photoUrl)
                 .circleCrop()
                 .into(binding.imageAvatar)
+            if (changed) binding.imageAvatar.fadeInIfNeeded()
         } else {
             binding.imageAvatar.visibility = View.GONE
             binding.textAvatar.visibility = View.VISIBLE
             binding.textAvatar.text = initials
             Glide.with(this).clear(binding.imageAvatar)
+            if (changed) binding.textAvatar.fadeInIfNeeded()
         }
     }
 

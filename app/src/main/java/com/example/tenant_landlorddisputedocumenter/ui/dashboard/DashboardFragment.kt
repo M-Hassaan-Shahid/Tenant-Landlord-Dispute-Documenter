@@ -16,7 +16,14 @@ import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentDashboardBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
 import com.example.tenant_landlorddisputedocumenter.navigation.DashboardFragmentDirections
+import com.example.tenant_landlorddisputedocumenter.ui.applyProofNestItemAnimations
+import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
+import com.example.tenant_landlorddisputedocumenter.ui.crossfadeTo
+import com.example.tenant_landlorddisputedocumenter.ui.fadeInSlideUp
+import com.example.tenant_landlorddisputedocumenter.ui.scaleInFab
+import com.example.tenant_landlorddisputedocumenter.ui.showShimmer
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyRoleUi
+import com.facebook.shimmer.ShimmerFrameLayout
 import android.widget.Toast
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -49,11 +56,13 @@ class DashboardFragment : Fragment() {
         
         adapter = PropertyAdapter(currentUserId) { property ->
             val action = DashboardFragmentDirections.actionDashboardToPropertyDetails(property.id)
-            findNavController().navigate(action)
+            findNavController().navigateAnimated(action)
         }
         
         binding.recyclerViewProperties.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewProperties.applyProofNestItemAnimations()
         binding.recyclerViewProperties.adapter = adapter
+        binding.cardWelcome.fadeInSlideUp()
 
         binding.swipeRefresh.setColorSchemeResources(R.color.proofnest_primary)
         binding.swipeRefresh.setOnRefreshListener {
@@ -69,6 +78,9 @@ class DashboardFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     binding.swipeRefresh.isRefreshing = state.isLoading
+                    (binding.includeShimmer as? ShimmerFrameLayout)?.showShimmer(
+                        state.isLoading && adapter.itemCount == 0,
+                    )
                     state.error?.let { message ->
                         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
                         viewModel.clearError()
@@ -81,9 +93,9 @@ class DashboardFragment : Fragment() {
         binding.fabAdd.setOnClickListener {
             when (container.authRepository.currentUserRole.value) {
                 com.example.tenant_landlorddisputedocumenter.domain.model.UserRole.TENANT ->
-                    findNavController().navigate(R.id.action_dashboard_to_join_property)
+                    findNavController().navigateAnimated(R.id.action_dashboard_to_join_property)
                 com.example.tenant_landlorddisputedocumenter.domain.model.UserRole.LANDLORD ->
-                    findNavController().navigate(R.id.action_dashboard_to_create_property)
+                    findNavController().navigateAnimated(R.id.action_dashboard_to_create_property)
                 null -> Unit
             }
         }
@@ -91,7 +103,11 @@ class DashboardFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 container.authRepository.currentUserRole.collect { role ->
+                    val wasDisabled = !binding.fabAdd.isEnabled
                     binding.fabAdd.isEnabled = role != null
+                    if (role != null && wasDisabled) {
+                        binding.fabAdd.scaleInFab()
+                    }
                     val isLandlord = role == UserRole.LANDLORD
                     if (role != null) {
                         binding.fabAdd.contentDescription = getString(PropertyRoleUi.dashboardFabActionRes(isLandlord))
@@ -106,9 +122,16 @@ class DashboardFragment : Fragment() {
                 viewModel.properties.collect { props ->
                     adapter.submitList(props)
                     val empty = props.isEmpty()
-                    binding.layoutEmpty.visibility = if (empty) View.VISIBLE else View.GONE
-                    binding.cardWelcome.visibility = if (empty) View.GONE else View.VISIBLE
-                    binding.recyclerViewProperties.visibility = if (empty) View.GONE else View.VISIBLE
+                    if (empty) {
+                        binding.layoutEmpty.visibility = View.VISIBLE
+                        binding.layoutEmpty.fadeInSlideUp()
+                        binding.cardWelcome.visibility = View.GONE
+                        binding.recyclerViewProperties.visibility = View.GONE
+                    } else {
+                        binding.layoutEmpty.visibility = View.GONE
+                        binding.cardWelcome.visibility = View.VISIBLE
+                        binding.recyclerViewProperties.visibility = View.VISIBLE
+                    }
                 }
             }
         }
@@ -134,7 +157,7 @@ class DashboardFragment : Fragment() {
                         in 17..20 -> "Good evening"
                         else -> "Hello"
                     }
-                    binding.textWelcomeTitle.text = "$greeting, $firstName"
+                    binding.textWelcomeTitle.crossfadeTo("$greeting, $firstName")
                     val roleLine = when (role) {
                         UserRole.LANDLORD -> getString(R.string.dashboard_role_landlord)
                         UserRole.TENANT -> getString(R.string.dashboard_role_tenant)
@@ -145,7 +168,9 @@ class DashboardFragment : Fragment() {
                     } else {
                         resources.getQuantityString(R.plurals.dashboard_property_count, props.size, props.size)
                     }
-                    binding.textWelcomeSubtitle.text = if (roleLine.isBlank()) countLine else "$roleLine · $countLine"
+                    binding.textWelcomeSubtitle.crossfadeTo(
+                        if (roleLine.isBlank()) countLine else "$roleLine · $countLine",
+                    )
                 }
             }
         }

@@ -12,13 +12,25 @@
         tools:layout="@layout/fragment_dashboard">
         <action
             android:id="@+id/action_dashboard_to_create_property"
-            app:destination="@id/navigation_create_property" />
+            app:destination="@id/navigation_create_property"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_dashboard_to_join_property"
-            app:destination="@id/navigation_join_property" />
+            app:destination="@id/navigation_join_property"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_dashboard_to_property_details"
-            app:destination="@id/navigation_property_details" />
+            app:destination="@id/navigation_property_details"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -55,22 +67,46 @@
             app:argType="string" />
         <action
             android:id="@+id/action_property_details_to_room_setup"
-            app:destination="@id/navigation_room_setup" />
+            app:destination="@id/navigation_room_setup"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_property_details_to_inspection"
-            app:destination="@id/navigation_inspection" />
+            app:destination="@id/navigation_inspection"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_property_details_to_compare"
-            app:destination="@id/navigation_compare" />
+            app:destination="@id/navigation_compare"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_property_details_to_report"
-            app:destination="@id/navigation_report" />
+            app:destination="@id/navigation_report"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_property_details_to_disputes_list"
-            app:destination="@id/navigation_disputes_list" />
+            app:destination="@id/navigation_disputes_list"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_property_details_to_review_sign"
-            app:destination="@id/navigation_review_sign" />
+            app:destination="@id/navigation_review_sign"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -97,7 +133,11 @@
             android:defaultValue="MOVE_IN" />
         <action
             android:id="@+id/action_inspection_to_review_sign"
-            app:destination="@id/navigation_review_sign" />
+            app:destination="@id/navigation_review_sign"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -115,6 +155,10 @@
         <action
             android:id="@+id/action_review_sign_to_dashboard"
             app:destination="@id/navigation_dashboard"
+            app:enterAnim="@anim/fade_in"
+            app:exitAnim="@anim/fade_out"
+            app:popEnterAnim="@anim/fade_in"
+            app:popExitAnim="@anim/fade_out"
             app:popUpTo="@id/navigation_dashboard"
             app:popUpToInclusive="true" />
     </fragment>
@@ -129,10 +173,18 @@
             app:argType="string" />
         <action
             android:id="@+id/action_compare_to_dispute"
-            app:destination="@id/navigation_dispute" />
+            app:destination="@id/navigation_dispute"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_compare_to_report"
-            app:destination="@id/navigation_report" />
+            app:destination="@id/navigation_report"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -172,7 +224,11 @@
             app:argType="string" />
         <action
             android:id="@+id/action_disputes_list_to_dispute"
-            app:destination="@id/navigation_dispute" />
+            app:destination="@id/navigation_dispute"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
 </navigation>

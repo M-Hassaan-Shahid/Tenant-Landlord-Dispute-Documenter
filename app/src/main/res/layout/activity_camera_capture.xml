@@ -78,11 +78,13 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible">
 
-        <com.google.android.material.progressindicator.CircularProgressIndicator
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:indeterminate="true"
-            app:indicatorColor="@color/proofnest_primary" />
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottieSaving"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true"
+            app:lottie_rawRes="@raw/lottie_loading" />
 
         <TextView
             android:id="@+id/textSaving"

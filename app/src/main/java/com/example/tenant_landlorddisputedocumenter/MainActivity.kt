@@ -14,6 +14,8 @@ import androidx.core.view.get
 import androidx.fragment.app.FragmentManager
 import com.example.tenant_landlorddisputedocumenter.ui.applyAppBarStatusBarInset
 import com.example.tenant_landlorddisputedocumenter.ui.applyBottomNavInset
+import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
@@ -85,6 +87,18 @@ class MainActivity : AppCompatActivity() {
             isItemActiveIndicatorEnabled = false
             setupWithNavController(navController)
         }
+        var lastTopLevelId = R.id.navigation_dashboard
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            val topLevel = destination.id in setOf(
+                R.id.navigation_dashboard,
+                R.id.navigation_notifications,
+                R.id.navigation_profile,
+            )
+            if (topLevel && destination.id != lastTopLevelId) {
+                binding.navHostFragment.pulse(1.02f)
+                lastTopLevelId = destination.id
+            }
+        }
         requestNotificationPermissionIfNeeded()
         registerFcmToken()
         bindNotificationBadge()
@@ -109,7 +123,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun navigateToProperty(propertyId: String) {
         val args = PropertyDetailsFragmentArgs(propertyId).toBundle()
-        navController.navigate(R.id.navigation_property_details, args)
+        navController.navigateAnimated(R.id.navigation_property_details, args)
     }
 
     private fun bindNotificationBadge() {
@@ -122,15 +136,20 @@ class MainActivity : AppCompatActivity() {
             maxCharacterCount = 2
             isVisible = false
         }
+        var lastCount = 0
         lifecycleScope.launch {
             container.notificationRepository.observeUnreadCount(uid).collect { count ->
                 if (count > 0) {
                     badge.isVisible = true
                     badge.number = count.coerceAtMost(99)
+                    if (count > lastCount) {
+                        binding.bottomNavigation.pulse(1.04f)
+                    }
                 } else {
                     badge.isVisible = false
                     badge.clearNumber()
                 }
+                lastCount = count
             }
         }
     }

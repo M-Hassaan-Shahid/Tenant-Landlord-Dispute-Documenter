@@ -14,8 +14,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.example.tenant_landlorddisputedocumenter.navigation.RoomSetupFragmentArgs
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.applyProofNestItemAnimations
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
+import com.example.tenant_landlorddisputedocumenter.ui.scaleInFab
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
@@ -56,7 +58,9 @@ class RoomSetupFragment : Fragment() {
 
         adapter = RoomAdapter(onDelete = { room -> viewModel.deleteRoom(room.id) })
         binding.recyclerViewRooms.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewRooms.applyProofNestItemAnimations()
         binding.recyclerViewRooms.adapter = adapter
+        binding.fabAddRoom.scaleInFab()
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
 

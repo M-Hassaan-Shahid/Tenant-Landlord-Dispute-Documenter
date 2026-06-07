@@ -16,6 +16,8 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.ConditionRating
 import com.example.tenant_landlorddisputedocumenter.domain.model.Photo
 import com.example.tenant_landlorddisputedocumenter.domain.model.RatingDelta
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
+import com.example.tenant_landlorddisputedocumenter.ui.staggerAppear
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -39,6 +41,7 @@ class CompareAdapter(
     }
 
     override fun onBindViewHolder(holder: CompareViewHolder, position: Int) {
+        holder.staggerAppear(position)
         holder.bind(getItem(position), scope, loadPhotos, onPhotoClick, onRaiseDispute, this.showRaiseDispute)
     }
 
@@ -91,8 +94,13 @@ class CompareAdapter(
                 ColorStateList.valueOf(ContextCompat.getColor(ctx, chipBg))
             binding.chipChange.setTextColor(ContextCompat.getColor(ctx, chipText))
 
+            val showDisputeButton = showRaiseDispute && delta == RatingDelta.DEGRADED
             binding.buttonRaiseDispute.visibility =
-                if (showRaiseDispute && delta == RatingDelta.DEGRADED) View.VISIBLE else View.GONE
+                if (showDisputeButton) View.VISIBLE else View.GONE
+            if (showDisputeButton) {
+                binding.chipChange.pulse()
+                binding.buttonRaiseDispute.pulse(1.04f)
+            }
             binding.buttonRaiseDispute.setOnClickListener { onRaiseDispute(item) }
         }
 

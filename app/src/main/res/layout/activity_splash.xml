@@ -43,7 +43,7 @@
             android:indeterminate="true"
             app:indicatorColor="@color/proofnest_secondary"
             app:indicatorSize="40dp"
-            app:trackColor="@color/splash_loader_track"
+            app:trackColor="@color/proofnest_surface_variant"
             app:trackThickness="3dp" />
     </LinearLayout>
 

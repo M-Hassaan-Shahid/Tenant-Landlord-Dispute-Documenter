@@ -341,24 +341,32 @@ class InspectionRepository(
             pngBase64 = pngBase64,
             signedAtMillis = System.currentTimeMillis(),
         )
-        val remoteUrl = uploadSignatureImage(signature)
-        val withUrl = signature.copy(remoteUrl = remoteUrl)
+        val remoteUrl = runCatching { uploadSignatureImage(signature) }.getOrNull()
+        val persisted = signature.copy(remoteUrl = remoteUrl)
         invalidateProperty(propertyId)
-        signatureDao.upsert(SignatureEntity.from(withUrl))
-        pushSignature(withUrl)
+        signatureDao.upsert(SignatureEntity.from(persisted))
+        try {
+            ensurePropertyOnCloud(property)
+            pushSignature(persisted)
+        } catch (e: Exception) {
+            signatureDao.delete(signature.id)
+            throw e
+        }
 
         val phaseLabel = if (phase == InspectionPhase.MOVE_IN) "move-in" else "move-out"
         notifyRecipientUid?.let { recipient ->
-            notificationRepository.push(
-                recipientUid = recipient,
-                type = com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType.SIGNATURE_REQUESTED,
-                title = "${signerRole.name.lowercase().replaceFirstChar { it.uppercase() }} signed $phaseLabel",
-                body = "Please review and sign the $phaseLabel record when ready.",
-                propertyId = propertyId,
-            )
+            runCatching {
+                notificationRepository.push(
+                    recipientUid = recipient,
+                    type = com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType.SIGNATURE_REQUESTED,
+                    title = "${signerRole.name.lowercase().replaceFirstChar { it.uppercase() }} signed $phaseLabel",
+                    body = "Please review and sign the $phaseLabel record when ready.",
+                    propertyId = propertyId,
+                )
+            }
         }
 
-        return withUrl
+        return persisted
     }
 
     suspend fun isPhaseSignedByBoth(
@@ -459,6 +467,17 @@ class InspectionRepository(
 
     private suspend fun requireProperty(propertyId: String): PropertyEntity =
         propertyDao.get(propertyId) ?: error("Property not found.")
+
+    /** Ensures Firestore rules can resolve property membership before signature/dispute writes. */
+    private suspend fun ensurePropertyOnCloud(property: PropertyEntity) {
+        val snap = firestore.collection(FirestorePaths.PROPERTIES).document(property.id).get().await()
+        if (snap.exists()) return
+        val domain = property.toDomain()
+        firestoreWrite("property") {
+            firestore.collection(FirestorePaths.PROPERTIES).document(domain.id)
+                .set(domain.toFirestoreMap()).await()
+        }
+    }
 
     private suspend fun requireStructureEditable(property: PropertyEntity) {
         require(property.status != PropertyStatus.CLOSED) { "Property record is closed." }
@@ -594,6 +613,24 @@ class InspectionRepository(
         "remoteUrl" to remoteUrl,
         "signedAtMillis" to signedAtMillis,
     )
+
+    private fun com.example.tenant_landlorddisputedocumenter.domain.model.Property.toFirestoreMap(): Map<String, Any?> =
+        mapOf(
+            "id" to id,
+            "landlordId" to landlordId,
+            "tenantId" to tenantId,
+            "address" to address,
+            "rent" to rent,
+            "deposit" to deposit,
+            "leaseStartMillis" to leaseStartMillis,
+            "leaseEndMillis" to leaseEndMillis,
+            "inviteCode" to inviteCode,
+            "status" to status.name,
+            "moveInInspectionSubmittedAtMillis" to moveInInspectionSubmittedAtMillis,
+            "moveOutInspectionSubmittedAtMillis" to moveOutInspectionSubmittedAtMillis,
+            "createdAtMillis" to createdAtMillis,
+            "updatedAtMillis" to updatedAtMillis,
+        )
 
     private fun Photo.toFirestoreMap(): Map<String, Any?> = mapOf(
         "id" to id, "itemId" to itemId, "propertyId" to propertyId, "phase" to phase.name,

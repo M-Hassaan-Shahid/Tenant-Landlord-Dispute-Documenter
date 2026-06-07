@@ -15,6 +15,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentJoinPropertyBinding
+import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
 import kotlinx.coroutines.launch
 
 class JoinPropertyFragment : Fragment() {
@@ -64,7 +65,7 @@ class JoinPropertyFragment : Fragment() {
                             Toast.LENGTH_LONG,
                         ).show()
                         viewModel.clearState()
-                        findNavController().navigate(
+                        findNavController().navigateAnimated(
                             R.id.navigation_property_details,
                             bundleOf("propertyId" to property.id),
                         )

@@ -14,6 +14,8 @@ import androidx.viewpager2.widget.ViewPager2
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.ActivityOnboardingBinding
 import com.example.tenant_landlorddisputedocumenter.ui.BaseActivity
+import com.example.tenant_landlorddisputedocumenter.ui.fadeInSlideUp
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
 
 /** Welcome carousel with feature highlights, Sign-up and Login. */
 class OnboardingActivity : BaseActivity() {
@@ -47,6 +49,9 @@ class OnboardingActivity : BaseActivity() {
         applySystemBarPadding()
         setupPager()
         setupDots()
+
+        binding.signUpButton.fadeInSlideUp(80)
+        binding.loginButton.fadeInSlideUp(140)
 
         binding.signUpButton.setOnClickListener {
             startActivity(Intent(this, SignUpActivity::class.java))
@@ -134,6 +139,7 @@ class OnboardingActivity : BaseActivity() {
             lp.width = if (active) activeWidth else dotSize
             dot.layoutParams = lp
             dot.background = if (active) activeBg else inactiveBg
+            if (active) dot.pulse(1.15f)
         }
     }
 }

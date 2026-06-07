@@ -18,6 +18,7 @@ import com.example.tenant_landlorddisputedocumenter.databinding.FragmentNotifica
 import android.widget.Toast
 import com.example.tenant_landlorddisputedocumenter.domain.model.AppNotification
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
+import com.example.tenant_landlorddisputedocumenter.ui.applyProofNestItemAnimations
 import kotlinx.coroutines.launch
 
 class NotificationsFragment : Fragment() {
@@ -42,6 +43,7 @@ class NotificationsFragment : Fragment() {
 
         val adapter = NotificationAdapter { notification -> onNotificationClicked(notification) }
         binding.recyclerViewNotifications.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewNotifications.applyProofNestItemAnimations()
         binding.recyclerViewNotifications.adapter = adapter
 
         binding.toolbar.setOnMenuItemClickListener { item -> onMenuItem(item, authRepo.currentUserId.value) }

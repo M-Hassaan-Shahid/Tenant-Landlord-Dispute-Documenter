@@ -1,5 +1,6 @@
 package com.example.tenant_landlorddisputedocumenter.ui.notifications
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
@@ -10,6 +11,7 @@ import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.ItemNotificationBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.AppNotification
 import com.example.tenant_landlorddisputedocumenter.ui.util.NotificationUi
+import com.example.tenant_landlorddisputedocumenter.ui.staggerAppear
 import com.example.tenant_landlorddisputedocumenter.util.DateUtils
 import java.util.concurrent.TimeUnit
 
@@ -23,6 +25,7 @@ class NotificationAdapter(
     }
 
     override fun onBindViewHolder(holder: NotificationViewHolder, position: Int) {
+        holder.staggerAppear(position)
         holder.bind(getItem(position), onNotificationClick)
     }
 
@@ -42,11 +45,12 @@ class NotificationAdapter(
             )
 
             val ctx = binding.root.context
+            val strokePx = (ctx.resources.displayMetrics.density).toInt()
             if (notification.read) {
                 binding.textNotificationTitle.setTextColor(
                     ContextCompat.getColor(ctx, R.color.proofnest_on_surface_muted),
                 )
-                binding.root.background = null
+                binding.root.strokeWidth = 0
                 binding.root.setCardBackgroundColor(
                     ContextCompat.getColor(ctx, R.color.notification_read_surface),
                 )
@@ -54,10 +58,13 @@ class NotificationAdapter(
                 binding.textNotificationTitle.setTextColor(
                     ContextCompat.getColor(ctx, R.color.proofnest_on_surface),
                 )
+                binding.root.strokeWidth = strokePx
+                binding.root.setStrokeColor(
+                    ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.proofnest_primary)),
+                )
                 binding.root.setCardBackgroundColor(
                     ContextCompat.getColor(ctx, R.color.proofnest_surface),
                 )
-                binding.root.background = ContextCompat.getDrawable(ctx, R.drawable.bg_card_unread)
             }
 
             binding.root.setOnClickListener { onClick(notification) }

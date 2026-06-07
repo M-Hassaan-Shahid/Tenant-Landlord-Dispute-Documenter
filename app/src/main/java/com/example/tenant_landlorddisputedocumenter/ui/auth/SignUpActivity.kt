@@ -9,6 +9,8 @@ import com.example.tenant_landlorddisputedocumenter.databinding.ActivitySignUpBi
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
 import com.example.tenant_landlorddisputedocumenter.ui.BaseActivity
 import com.example.tenant_landlorddisputedocumenter.ui.collectOnStart
+import com.example.tenant_landlorddisputedocumenter.ui.fadeInSlideUp
+import com.example.tenant_landlorddisputedocumenter.ui.shake
 
 class SignUpActivity : BaseActivity() {
 
@@ -22,6 +24,8 @@ class SignUpActivity : BaseActivity() {
 
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.roleToggleGroup.check(R.id.buttonLandlord)
+        binding.createAccountButton.fadeInSlideUp(120)
+        var lastError: String? = null
 
         binding.createAccountButton.setOnClickListener {
             val role = if (binding.roleToggleGroup.checkedButtonId == R.id.buttonLandlord) {
@@ -46,6 +50,11 @@ class SignUpActivity : BaseActivity() {
             else getString(R.string.action_create_account)
             binding.errorText.visibility = if (state.errorMessage != null) View.VISIBLE else View.GONE
             binding.errorText.text = state.errorMessage
+            if (state.errorMessage != null && state.errorMessage != lastError) {
+                binding.emailField.shake()
+                binding.errorText.shake()
+            }
+            lastError = state.errorMessage
             if (state.signedInUser != null) {
                 startActivity(Intent(this, SplashActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

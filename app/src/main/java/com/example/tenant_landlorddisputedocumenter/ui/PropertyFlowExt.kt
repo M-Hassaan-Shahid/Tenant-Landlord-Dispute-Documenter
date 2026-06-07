@@ -21,12 +21,15 @@ fun Fragment.guardPropertyAccess(
         val property = container.propertyRepository.getProperty(propertyId)
         val access = accessCheck(property, uid)
         if (!access.allowed || property == null) {
-            Toast.makeText(
-                requireContext(),
-                access.denialMessage ?: "Access denied.",
-                Toast.LENGTH_LONG,
-            ).show()
-            findNavController().navigateUp()
+            if (isAdded) {
+                view?.shake()
+                Toast.makeText(
+                    requireContext(),
+                    access.denialMessage ?: "Access denied.",
+                    Toast.LENGTH_LONG,
+                ).show()
+                findNavController().navigateUp()
+            }
             return@launch
         }
         onGranted(property)

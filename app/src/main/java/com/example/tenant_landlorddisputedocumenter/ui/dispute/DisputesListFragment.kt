@@ -22,8 +22,10 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.Dispute
 import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.applyProofNestItemAnimations
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
+import com.example.tenant_landlorddisputedocumenter.ui.scaleInFab
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -82,7 +84,9 @@ class DisputesListFragment : Fragment() {
             },
         )
         binding.recyclerViewDisputes.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewDisputes.applyProofNestItemAnimations()
         binding.recyclerViewDisputes.adapter = adapter
+        binding.fabRaiseDispute.scaleInFab()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

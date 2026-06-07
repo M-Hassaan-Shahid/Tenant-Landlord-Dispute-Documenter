@@ -57,6 +57,7 @@
     <string name="profile_photo_failed">Could not update photo. Try again.</string>
     <string name="profile_photo_invalid_type">Please choose a JPEG, PNG, or WebP image.</string>
     <string name="profile_photo_too_large">Photo must be 5 MB or smaller.</string>
+    <string name="profile_logout_failed">Could not sign out. Please try again.</string>
     <string name="property_details_title">Property</string>
     <string name="invite_code_label">Invite code — share with tenant</string>
     <string name="invite_copy">Copy code</string>

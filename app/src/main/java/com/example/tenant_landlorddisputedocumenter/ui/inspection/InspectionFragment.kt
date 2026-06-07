@@ -19,6 +19,8 @@ import com.example.tenant_landlorddisputedocumenter.databinding.FragmentInspecti
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
+import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.flow.first
@@ -134,7 +136,8 @@ class InspectionFragment : Fragment() {
                     }
                     if (state.isFinished) {
                         viewModel.clearFinished()
-                        findNavController().navigate(
+                        binding.buttonFinishInspection.pulse()
+                        findNavController().navigateAnimated(
                             InspectionFragmentDirections.actionInspectionToReviewSign(propertyId, phase.name),
                         )
                     }

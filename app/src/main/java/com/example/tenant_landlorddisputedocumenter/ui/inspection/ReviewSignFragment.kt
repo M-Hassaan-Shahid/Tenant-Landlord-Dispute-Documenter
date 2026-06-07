@@ -22,8 +22,10 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.ui.dispute.showDisputeItemPicker
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
+import com.example.tenant_landlorddisputedocumenter.util.FirebaseCallableErrors
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -223,6 +225,7 @@ class ReviewSignFragment : Fragment() {
                         }
                     }
                 }.onSuccess {
+                    binding.signaturePad.pulse(1.03f)
                     Toast.makeText(
                         requireContext(),
                         if (phase == InspectionPhase.MOVE_IN) {
@@ -236,7 +239,11 @@ class ReviewSignFragment : Fragment() {
                 }.onFailure { e ->
                     binding.buttonSubmit.isEnabled = true
                     binding.buttonSubmit.text = getString(R.string.confirm_signature)
-                    Toast.makeText(requireContext(), "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        requireContext(),
+                        FirebaseCallableErrors.userMessage(e),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
         }

@@ -1,7 +1,6 @@
 package com.example.tenant_landlorddisputedocumenter.ui
 
 import android.graphics.Color
-import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.R as AppCompatR
@@ -14,8 +13,8 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.color.MaterialColors
 
 /**
- * Status bar area uses [android:statusBarColor]; the toolbar is a fixed-height row directly
- * below it so title and navigation stay vertically centered in one band.
+ * Applies window insets so the status bar uses [android:statusBarColor] and the toolbar sits
+ * in a fixed-height row below it, keeping the title and navigation icon vertically centered.
  */
 fun AppBarLayout.applyStatusBarInset() {
     setBackgroundColor(Color.TRANSPARENT)
@@ -78,13 +77,4 @@ fun View.applyBottomNavInset() {
         windowInsets
     }
     ViewCompat.requestApplyInsets(this)
-}
-
-private fun android.content.Context.resolveActionBarHeight(): Int {
-    val typed = TypedValue()
-    return if (theme.resolveAttribute(AppCompatR.attr.actionBarSize, typed, true)) {
-        TypedValue.complexToDimensionPixelSize(typed.data, resources.displayMetrics)
-    } else {
-        resources.getDimensionPixelSize(R.dimen.toolbar_content_height)
-    }
 }

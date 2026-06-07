@@ -19,6 +19,8 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import android.net.Uri
 import android.widget.LinearLayout
 import com.example.tenant_landlorddisputedocumenter.ui.allowHorizontalPhotoScroll
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
+import com.example.tenant_landlorddisputedocumenter.ui.staggerAppear
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -91,6 +93,7 @@ class ChecklistAdapter(
                     else -> return@setOnCheckedStateChangeListener
                 }
                 applyRatingChipStyles(binding, rating)
+                binding.chipGroupRating.pulse()
                 onRatingChanged(item.id, rating)
             }
             applyRatingChipStyles(binding, currentRating)

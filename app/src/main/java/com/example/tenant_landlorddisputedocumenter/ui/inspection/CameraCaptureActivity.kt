@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import com.example.tenant_landlorddisputedocumenter.ui.applyBottomNavInset
 import com.example.tenant_landlorddisputedocumenter.ui.applyStandaloneToolbarInset
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
 import android.view.View
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -163,10 +164,16 @@ class CameraCaptureActivity : AppCompatActivity() {
         binding.savingOverlay.visibility = if (saving) View.VISIBLE else View.GONE
         binding.buttonCapture.isEnabled = !saving
         binding.toolbarCamera.isEnabled = !saving
+        if (saving) {
+            binding.lottieSaving.playAnimation()
+        } else {
+            binding.lottieSaving.cancelAnimation()
+        }
     }
 
     private fun capturePhoto() {
         val capture = imageCapture ?: return
+        binding.buttonCapture.pulse(0.92f)
         setSavingUi(true)
 
         val photoId = Ids.newId()

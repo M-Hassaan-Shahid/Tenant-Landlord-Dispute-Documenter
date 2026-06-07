@@ -68,6 +68,10 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <include
+                android:id="@+id/includeShimmer"
+                layout="@layout/include_shimmer_property_list" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerViewProperties"
                 android:layout_width="match_parent"
@@ -91,18 +95,13 @@
         android:visibility="gone"
         tools:visibility="visible">
 
-        <FrameLayout
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:background="@drawable/bg_notif_icon">
-
-            <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_home"
-                app:tint="@color/proofnest_primary" />
-        </FrameLayout>
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottieEmpty"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true"
+            app:lottie_rawRes="@raw/lottie_loading" />
 
         <TextView
             android:layout_width="wrap_content"

@@ -6,6 +6,8 @@ import androidx.activity.viewModels
 import com.example.tenant_landlorddisputedocumenter.databinding.ActivityForgotPasswordBinding
 import com.example.tenant_landlorddisputedocumenter.ui.BaseActivity
 import com.example.tenant_landlorddisputedocumenter.ui.collectOnStart
+import com.example.tenant_landlorddisputedocumenter.ui.fadeInSlideUp
+import com.example.tenant_landlorddisputedocumenter.ui.shake
 
 class ForgotPasswordActivity : BaseActivity() {
 
@@ -18,6 +20,8 @@ class ForgotPasswordActivity : BaseActivity() {
         setContentView(binding.root)
 
         binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.sendResetButton.fadeInSlideUp(120)
+        var lastError: String? = null
         binding.sendResetButton.setOnClickListener {
             viewModel.sendPasswordReset(binding.emailField.text?.toString().orEmpty())
         }
@@ -26,6 +30,11 @@ class ForgotPasswordActivity : BaseActivity() {
             binding.sendResetButton.isEnabled = !state.isLoading
             binding.errorText.visibility = if (state.errorMessage != null) View.VISIBLE else View.GONE
             binding.errorText.text = state.errorMessage
+            if (state.errorMessage != null && state.errorMessage != lastError) {
+                binding.emailField.shake()
+                binding.errorText.shake()
+            }
+            lastError = state.errorMessage
             binding.infoText.visibility = if (state.infoMessage != null) View.VISIBLE else View.GONE
             binding.infoText.text = state.infoMessage
         }

@@ -24,7 +24,9 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.Property
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.Signature
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.fadeInSlideUp
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
+import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyPrimaryAction
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyRoleUi
@@ -39,6 +41,7 @@ class PropertyDetailsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var viewModel: PropertyDetailsViewModel
+    private var lastActionsKey: String? = null
     private val args: PropertyDetailsFragmentArgs by lazy {
         PropertyDetailsFragmentArgs.fromBundle(requireArguments())
     }
@@ -66,7 +69,7 @@ class PropertyDetailsFragment : Fragment() {
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
 
         binding.buttonRoomSetup.setOnClickListener {
-            findNavController().navigate(
+            findNavController().navigateAnimated(
                 PropertyDetailsFragmentDirections.actionPropertyDetailsToRoomSetup(propertyId),
             )
         }
@@ -85,19 +88,19 @@ class PropertyDetailsFragment : Fragment() {
         }
 
         binding.buttonCompare.setOnClickListener {
-            findNavController().navigate(
+            findNavController().navigateAnimated(
                 PropertyDetailsFragmentDirections.actionPropertyDetailsToCompare(propertyId),
             )
         }
 
         binding.buttonReport.setOnClickListener {
-            findNavController().navigate(
+            findNavController().navigateAnimated(
                 PropertyDetailsFragmentDirections.actionPropertyDetailsToReport(propertyId),
             )
         }
 
         binding.buttonDisputes.setOnClickListener {
-            findNavController().navigate(
+            findNavController().navigateAnimated(
                 PropertyDetailsFragmentDirections.actionPropertyDetailsToDisputesList(propertyId),
             )
         }
@@ -293,6 +296,26 @@ class PropertyDetailsFragment : Fragment() {
         } else {
             getString(R.string.tile_disputes)
         }
+
+        val actionsKey = actions.joinToString { it.name }
+        if (actionsKey != lastActionsKey) {
+            lastActionsKey = actionsKey
+            staggerVisibleActions()
+        }
+    }
+
+    private fun staggerVisibleActions() {
+        listOf(
+            binding.buttonRoomSetup,
+            binding.buttonInspection,
+            binding.buttonReviewSign,
+            binding.buttonStartMoveOut,
+            binding.buttonCompare,
+            binding.buttonReport,
+            binding.buttonDisputes,
+        )
+            .filter { it.visibility == View.VISIBLE }
+            .forEachIndexed { index, button -> button.fadeInSlideUp(index * 45L) }
     }
 
     private fun hideAllActionButtons() {
@@ -310,13 +333,13 @@ class PropertyDetailsFragment : Fragment() {
         viewModel.inspectionPhase.value
 
     private fun navigateToInspection(propertyId: String, phase: InspectionPhase) {
-        findNavController().navigate(
+        findNavController().navigateAnimated(
             PropertyDetailsFragmentDirections.actionPropertyDetailsToInspection(propertyId, phase.name),
         )
     }
 
     private fun navigateToReviewSign(propertyId: String, phase: InspectionPhase) {
-        findNavController().navigate(
+        findNavController().navigateAnimated(
             PropertyDetailsFragmentDirections.actionPropertyDetailsToReviewSign(propertyId, phase.name),
         )
     }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="motion_nav_duration">280</integer>
+    <integer name="motion_fade_duration">200</integer>
+</resources>

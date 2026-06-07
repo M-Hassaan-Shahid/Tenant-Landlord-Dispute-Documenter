@@ -99,6 +99,8 @@ dependencies {
 
     // Image loading
     implementation(libs.glide)
+    implementation(libs.lottie)
+    implementation(libs.shimmer)
 
     // Tests
     testImplementation(libs.junit)

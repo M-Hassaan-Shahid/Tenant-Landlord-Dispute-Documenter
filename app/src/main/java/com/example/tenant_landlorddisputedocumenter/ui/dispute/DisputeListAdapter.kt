@@ -14,6 +14,7 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.Photo
 import com.example.tenant_landlorddisputedocumenter.ui.allowHorizontalPhotoScroll
 import com.example.tenant_landlorddisputedocumenter.ui.bindPhotoThumbs
+import com.example.tenant_landlorddisputedocumenter.ui.staggerAppear
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,7 @@ class DisputeListAdapter(
     }
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
+        holder.staggerAppear(position)
         holder.bind(getItem(position), itemNames, scope, loadPhotos, onPhotoClick, onResolve, canResolve)
     }
 

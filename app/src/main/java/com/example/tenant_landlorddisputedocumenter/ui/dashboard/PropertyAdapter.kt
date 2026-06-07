@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.ItemPropertyBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.Property
+import com.example.tenant_landlorddisputedocumenter.ui.staggerAppear
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyRoleUi
 import com.example.tenant_landlorddisputedocumenter.ui.util.PropertyStatusUi
 
@@ -25,6 +26,7 @@ class PropertyAdapter(
 
     override fun onBindViewHolder(holder: PropertyViewHolder, position: Int) {
         holder.bind(getItem(position), currentUserId, onClick)
+        holder.staggerAppear(position)
     }
 
     class PropertyViewHolder(private val binding: ItemPropertyBinding) :

@@ -15,6 +15,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentCreatePropertyBinding
+import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
 import com.example.tenant_landlorddisputedocumenter.util.DateUtils
 import com.google.android.material.datepicker.MaterialDatePicker
 import kotlinx.coroutines.launch
@@ -93,7 +94,7 @@ class CreatePropertyFragment : Fragment() {
                             Toast.LENGTH_LONG,
                         ).show()
                         viewModel.clearState()
-                        findNavController().navigate(
+                        findNavController().navigateAnimated(
                             R.id.navigation_property_details,
                             bundleOf("propertyId" to property.id),
                         )

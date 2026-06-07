@@ -20,9 +20,13 @@ import com.example.tenant_landlorddisputedocumenter.navigation.CompareFragmentDi
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
 import com.example.tenant_landlorddisputedocumenter.domain.model.RatingDelta
+import com.example.tenant_landlorddisputedocumenter.ui.applyProofNestItemAnimations
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
+import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CompareFragment : Fragment() {
 
@@ -63,6 +67,7 @@ class CompareFragment : Fragment() {
             adapter.showRaiseDispute = PropertyFlowPolicy.canShowRaiseDispute(property, uid)
         }
         binding.recyclerViewComparison.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewComparison.applyProofNestItemAnimations()
         binding.recyclerViewComparison.adapter = adapter
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
@@ -111,27 +116,26 @@ class CompareFragment : Fragment() {
     private fun syncCompareData(propertyId: String, force: Boolean, showSpinner: Boolean) {
         val appContainer = (requireContext().applicationContext as ProofNestApplication).container
         if (showSpinner) {
-            binding.swipeRefresh.isRefreshing = true
+            _binding?.swipeRefresh?.isRefreshing = true
         }
         appContainer.repositoryScope.launch {
             val sync = appContainer.syncCoordinator.syncForCompare(propertyId, force = force)
-            if (showSpinner) {
-                viewLifecycleOwner.lifecycleScope.launch {
-                    binding.swipeRefresh.isRefreshing = false
-                    if (!sync.succeeded) {
-                        Toast.makeText(
-                            requireContext(),
-                            sync.errors.firstOrNull() ?: getString(R.string.sync_had_issues),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
+            if (!showSpinner) return@launch
+            withContext(Dispatchers.Main) {
+                _binding?.swipeRefresh?.isRefreshing = false
+                if (!sync.succeeded && isAdded) {
+                    Toast.makeText(
+                        requireContext(),
+                        sync.errors.firstOrNull() ?: getString(R.string.sync_had_issues),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 }
             }
         }
     }
 
     private fun navigateToDispute(propertyId: String, item: ChecklistItem) {
-        findNavController().navigate(
+        findNavController().navigateAnimated(
             CompareFragmentDirections.actionCompareToDispute(propertyId, item.id, item.name),
         )
     }

@@ -21,7 +21,9 @@ import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentDisputeBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
+import com.example.tenant_landlorddisputedocumenter.ui.fadeInSlideUp
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
+import com.example.tenant_landlorddisputedocumenter.ui.pulse
 import com.example.tenant_landlorddisputedocumenter.ui.inspection.CameraCaptureActivity
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
 import android.net.Uri
@@ -54,6 +56,8 @@ class DisputeFragment : Fragment() {
                 binding.imageEvidence.tag = it
                 Glide.with(this).load(it).into(binding.imageEvidence)
             }
+            binding.imageEvidence.fadeInSlideUp()
+            binding.imageEvidence.pulse(1.04f)
             Toast.makeText(requireContext(), "Counter-evidence photo attached.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -131,6 +135,7 @@ class DisputeFragment : Fragment() {
                         viewModel.clearMessages()
                     }
                     if (state.submitted) {
+                        binding.buttonSubmitDispute.pulse()
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.dispute_after_submit_body),

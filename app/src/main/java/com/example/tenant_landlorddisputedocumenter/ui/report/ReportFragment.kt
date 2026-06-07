@@ -21,6 +21,7 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
 import com.example.tenant_landlorddisputedocumenter.domain.model.RatingDelta
 import com.example.tenant_landlorddisputedocumenter.ui.guardPropertyAccess
+import com.example.tenant_landlorddisputedocumenter.ui.playOnce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -52,6 +53,7 @@ class ReportFragment : Fragment() {
         guardPropertyAccess(propertyId, PropertyFlowPolicy::reportAccess) { }
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
+        binding.lottieReport.setAnimation(com.example.tenant_landlorddisputedocumenter.R.raw.lottie_loading)
 
         viewLifecycleOwner.lifecycleScope.launch {
             runCatching { appContainer.syncCoordinator.syncPropertyForReport(propertyId) }
@@ -93,6 +95,13 @@ class ReportFragment : Fragment() {
                 viewModel.uiState.collect { state ->
                     binding.buttonExport.isEnabled = !state.isGenerating
                     binding.buttonExport.text = if (state.isGenerating) "Generating…" else "Generate & Share PDF"
+                    if (state.isGenerating) {
+                        binding.lottieReport.visibility = View.VISIBLE
+                        binding.lottieReport.playAnimation()
+                    } else {
+                        binding.lottieReport.cancelAnimation()
+                        binding.lottieReport.visibility = View.GONE
+                    }
 
                     state.error?.let {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
@@ -100,6 +109,9 @@ class ReportFragment : Fragment() {
                     }
 
                     state.reportFile?.let { file ->
+                        binding.lottieReport.setAnimation(com.example.tenant_landlorddisputedocumenter.R.raw.lottie_success)
+                        binding.lottieReport.visibility = View.VISIBLE
+                        binding.lottieReport.playOnce()
                         viewModel.clearMessages()
                         val uri = FileProvider.getUriForFile(
                             requireContext(),

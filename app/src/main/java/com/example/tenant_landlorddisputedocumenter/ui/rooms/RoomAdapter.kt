@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.tenant_landlorddisputedocumenter.databinding.ItemRoomBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionRoom
+import com.example.tenant_landlorddisputedocumenter.ui.staggerAppear
 
 class RoomAdapter(
     private val onDelete: (InspectionRoom) -> Unit,
@@ -25,6 +26,7 @@ class RoomAdapter(
     }
 
     override fun onBindViewHolder(holder: RoomViewHolder, position: Int) {
+        holder.staggerAppear(position)
         holder.bind(getItem(position), deleteEnabled, onDelete)
     }
 
