@@ -46,10 +46,168 @@ service cloud.firestore {
             .hasOnly(['tenantId', 'status', 'updatedAtMillis']);
     }
 
+    function propertyNotClosed(propertyId) {
+      return propertyData(propertyId).status != 'CLOSED';
+    }
+
+    function recordsEditable(propertyId) {
+      let p = propertyData(propertyId);
+      return (p.status == 'ACTIVE' && p.moveInInspectionSubmittedAtMillis == null)
+        || (p.status == 'MOVE_OUT' && p.moveOutInspectionSubmittedAtMillis == null);
+    }
+
+    function disputeWindowOpen(propertyId) {
+      let p = propertyData(propertyId);
+      return p.status != 'CLOSED' && p.tenantId != null && (
+        (p.status == 'ACTIVE' && p.moveInInspectionSubmittedAtMillis != null)
+        || (p.status == 'MOVE_OUT' && p.moveOutInspectionSubmittedAtMillis != null)
+      );
+    }
+
+    function isPropertyTenantFor(propertyId) {
+      return isSignedIn() && propertyData(propertyId).tenantId == request.auth.uid;
+    }
+
+    function canCaptureDisputeEvidence(propertyId) {
+      return disputeWindowOpen(propertyId) && isPropertyTenantFor(propertyId);
+    }
+
+    function structureEditable(propertyId) {
+      let p = propertyData(propertyId);
+      return p.status == 'ACTIVE' && p.moveInInspectionSubmittedAtMillis == null;
+    }
+
+    function inspectionSubmittedForPhase(propertyId, phase) {
+      let p = propertyData(propertyId);
+      return phase == 'MOVE_IN'
+        ? p.moveInInspectionSubmittedAtMillis != null
+        : p.moveOutInspectionSubmittedAtMillis != null;
+    }
+
+    function isApproveTenant() {
+      return isPropertyLandlord()
+        && resource.data.status == 'PENDING_APPROVAL'
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.tenantId == resource.data.tenantId
+        && request.resource.data.landlordId == resource.data.landlordId
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAtMillis']);
+    }
+
+    function isRejectTenant() {
+      return isPropertyLandlord()
+        && resource.data.status == 'PENDING_APPROVAL'
+        && request.resource.data.status == 'REJECTED'
+        && request.resource.data.tenantId == null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['tenantId', 'status', 'updatedAtMillis']);
+    }
+
+    function isMarkMoveInSubmitted() {
+      return isPropertyLandlord()
+        && resource.data.status == 'ACTIVE'
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.moveInInspectionSubmittedAtMillis != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['moveInInspectionSubmittedAtMillis', 'updatedAtMillis']);
+    }
+
+    function isMarkMoveOutSubmitted() {
+      return isPropertyLandlord()
+        && resource.data.status == 'MOVE_OUT'
+        && request.resource.data.status == 'MOVE_OUT'
+        && request.resource.data.moveOutInspectionSubmittedAtMillis != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['moveOutInspectionSubmittedAtMillis', 'updatedAtMillis']);
+    }
+
+    function isStartMoveOut() {
+      return isPropertyLandlord()
+        && resource.data.status == 'OCCUPIED'
+        && request.resource.data.status == 'MOVE_OUT'
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAtMillis']);
+    }
+
+    function signatureDocId(propertyId, phase, uid) {
+      return propertyId + '_' + phase + '_' + uid;
+    }
+
+    function hasSignature(propertyId, phase, uid) {
+      return exists(/databases/$(database)/documents/signatures/$(signatureDocId(propertyId, phase, uid)));
+    }
+
+    function bothSignedForPhase(propertyId, phase) {
+      let p = propertyData(propertyId);
+      return p.tenantId != null
+        && hasSignature(propertyId, phase, p.landlordId)
+        && hasSignature(propertyId, phase, p.tenantId);
+    }
+
+    function disputeLockId(propertyId, itemId) {
+      return propertyId + '_' + itemId;
+    }
+
+    function isSignStatusUpdate() {
+      return isPropertyMember(resource.id)
+        && (
+          (
+            resource.data.status == 'ACTIVE'
+            && request.resource.data.status == 'OCCUPIED'
+            && bothSignedForPhase(resource.id, 'MOVE_IN')
+          )
+          || (
+            resource.data.status == 'MOVE_OUT'
+            && request.resource.data.status == 'CLOSED'
+            && bothSignedForPhase(resource.id, 'MOVE_OUT')
+          )
+        )
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAtMillis']);
+    }
+
+    function isLandlordPendingMetadataEdit() {
+      return isPropertyLandlord()
+        && resource.data.status == 'PENDING'
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.tenantId == null
+        && request.resource.data.landlordId == resource.data.landlordId
+        && request.resource.data.inviteCode == resource.data.inviteCode
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['id', 'landlordId', 'inviteCode', 'status', 'tenantId']);
+    }
+
+    function isValidNotificationCreate() {
+      let data = request.resource.data;
+      let propId = data.propertyId;
+      return data.recipientUid is string
+        && data.title is string
+        && data.body is string
+        && (
+          (data.recipientUid == request.auth.uid && data.type == 'LEASE_ENDING')
+          || (
+            propId != null
+            && isPropertyMember(propId)
+            && data.recipientUid != request.auth.uid
+            && (
+              propertyData(propId).landlordId == data.recipientUid
+              || propertyData(propId).tenantId == data.recipientUid
+            )
+          )
+        );
+    }
+
     match /users/{userId} {
-      allow read: if isSignedIn();
+      allow read: if isOwner(userId);
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+    }
+
+    match /publicProfiles/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
     }
 
     match /inviteCodes/{code} {
@@ -66,47 +224,115 @@ service cloud.firestore {
         isPropertyTenant() ||
         isJoinableVacantProperty()
       );
-      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.landlordId == request.auth.uid
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.tenantId == null;
       allow update: if isSignedIn() && (
-        isPropertyLandlord() ||
-        isPropertyTenant() ||
-        isVacantPropertyJoin()
+        isVacantPropertyJoin() ||
+        isApproveTenant() ||
+        isRejectTenant() ||
+        isMarkMoveInSubmitted() ||
+        isMarkMoveOutSubmitted() ||
+        isStartMoveOut() ||
+        isSignStatusUpdate() ||
+        isLandlordPendingMetadataEdit()
       );
     }
 
     match /rooms/{roomId} {
       allow read: if isPropertyMember(resource.data.propertyId);
-      allow create: if isPropertyMember(request.resource.data.propertyId);
-      allow update, delete: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId)
+        && structureEditable(request.resource.data.propertyId);
+      allow update, delete: if isPropertyMember(resource.data.propertyId)
+        && structureEditable(resource.data.propertyId);
     }
 
     match /items/{itemId} {
       allow read: if isPropertyMember(resource.data.propertyId);
-      allow create: if isPropertyMember(request.resource.data.propertyId);
-      allow update, delete: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId)
+        && structureEditable(request.resource.data.propertyId);
+      allow update: if isPropertyMember(resource.data.propertyId)
+        && recordsEditable(resource.data.propertyId);
+      allow delete: if isPropertyMember(resource.data.propertyId)
+        && structureEditable(resource.data.propertyId);
     }
 
     match /photos/{photoId} {
       allow read: if isPropertyMember(resource.data.propertyId);
-      allow create: if isPropertyMember(request.resource.data.propertyId);
-      allow update, delete: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId)
+        && request.resource.data.capturedByUid == request.auth.uid
+        && (
+          recordsEditable(request.resource.data.propertyId)
+          || canCaptureDisputeEvidence(request.resource.data.propertyId)
+        );
+      allow update, delete: if isPropertyMember(resource.data.propertyId)
+        && (
+          recordsEditable(resource.data.propertyId)
+          || canCaptureDisputeEvidence(resource.data.propertyId)
+        );
     }
 
     match /signatures/{signatureId} {
       allow read: if isPropertyMember(resource.data.propertyId);
-      allow create: if isPropertyMember(request.resource.data.propertyId);
-      allow update, delete: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId)
+        && propertyNotClosed(request.resource.data.propertyId)
+        && inspectionSubmittedForPhase(
+          request.resource.data.propertyId,
+          request.resource.data.phase
+        )
+        && request.resource.data.signerUid == request.auth.uid
+        && !exists(/databases/$(database)/documents/signatures/$(signatureId));
+      allow update, delete: if false;
     }
 
     match /disputes/{disputeId} {
       allow read: if isPropertyMember(resource.data.propertyId);
-      allow create: if isPropertyMember(request.resource.data.propertyId);
-      allow update, delete: if isPropertyMember(resource.data.propertyId);
+      allow create: if isPropertyMember(request.resource.data.propertyId)
+        && disputeWindowOpen(request.resource.data.propertyId)
+        && isPropertyTenantFor(request.resource.data.propertyId)
+        && request.resource.data.raisedByUid == request.auth.uid
+        && request.resource.data.status == 'OPEN'
+        && exists(/databases/$(database)/documents/disputeItemLocks/$(disputeLockId(
+          request.resource.data.propertyId,
+          request.resource.data.itemId
+        )))
+        && get(/databases/$(database)/documents/disputeItemLocks/$(disputeLockId(
+          request.resource.data.propertyId,
+          request.resource.data.itemId
+        ))).data.disputeId == disputeId;
+      allow update: if isPropertyMember(resource.data.propertyId)
+        && resource.data.status == 'OPEN'
+        && request.auth.uid != resource.data.raisedByUid
+        && request.resource.data.status in ['RESOLVED', 'UNRESOLVED']
+        && request.resource.data.raisedByUid == resource.data.raisedByUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'resolutionNote', 'resolvedAtMillis']);
+      allow delete: if false;
+    }
+
+    match /disputeItemLocks/{lockId} {
+      allow read: if isPropertyMember(resource.data.propertyId);
+      allow create: if isSignedIn()
+        && isPropertyMember(request.resource.data.propertyId)
+        && isPropertyTenantFor(request.resource.data.propertyId)
+        && request.resource.data.itemId is string
+        && request.resource.data.disputeId is string
+        && request.resource.data.raisedByUid == request.auth.uid
+        && lockId == disputeLockId(
+          request.resource.data.propertyId,
+          request.resource.data.itemId
+        )
+        && !exists(/databases/$(database)/documents/disputeItemLocks/$(lockId));
+      allow update: if false;
+      allow delete: if isSignedIn()
+        && isPropertyMember(resource.data.propertyId)
+        && request.auth.uid != resource.data.raisedByUid;
     }
 
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && isValidNotificationCreate();
       allow update: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
     }
   }

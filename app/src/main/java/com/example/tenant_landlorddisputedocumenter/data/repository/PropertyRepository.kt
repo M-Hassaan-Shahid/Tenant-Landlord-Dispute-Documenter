@@ -12,6 +12,7 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.domain.model.Property
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.util.Ids
+import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import com.example.tenant_landlorddisputedocumenter.util.InviteCode
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +30,7 @@ class PropertyRepository(
     private fun invalidatePropertyCache(propertyId: String) {
         syncCache.invalidateProperty(propertyId)
     }
-    /** Stream of properties the user is involved with — either as landlord or tenant. */
+
     fun observeForUser(uid: String): Flow<List<Property>> =
         propertyDao.observeForUser(uid).map { list -> list.map { it.toDomain() } }
 
@@ -39,7 +40,6 @@ class PropertyRepository(
     suspend fun getProperty(id: String): Property? =
         propertyDao.get(id)?.toDomain()
 
-    /** Fetches the latest property document from Firestore into Room. */
     suspend fun refreshProperty(propertyId: String): Property? = runCatching {
         val snap = firestore.collection(FirestorePaths.PROPERTIES).document(propertyId).get().await()
         if (!snap.exists()) return@runCatching null
@@ -56,13 +56,17 @@ class PropertyRepository(
         leaseStartMillis: Long,
         leaseEndMillis: Long,
     ): Outcome<Property> = runCatching {
-        // Loop a handful of times in case of collision. Realistically this never iterates twice.
+        InputValidation.validateAddress(address)?.let { error(it) }
+        require(rent >= InputValidation.MIN_RENT) { "Rent must be at least ${InputValidation.MIN_RENT.toInt()}." }
+        require(deposit >= InputValidation.MIN_RENT) { "Deposit must be at least ${InputValidation.MIN_RENT.toInt()}." }
+        require(leaseEndMillis > leaseStartMillis) { "Lease end must be after lease start." }
+
         val inviteCode = generateUniqueCode()
         val property = Property(
             id = Ids.newId(),
             landlordId = landlordId,
             tenantId = null,
-            address = address,
+            address = address.trim(),
             rent = rent,
             deposit = deposit,
             leaseStartMillis = leaseStartMillis,
@@ -86,34 +90,34 @@ class PropertyRepository(
         if (!doc.exists()) error("Property no longer exists.")
         val property = doc.toProperty()
         require(property.landlordId != tenantId) { "You cannot join your own property as a tenant." }
-        require(property.tenantId == null || property.tenantId == tenantId) { "Property already has a tenant." }
+        require(property.tenantId == null) { "Property already has a tenant." }
+        require(property.status == PropertyStatus.PENDING || property.status == PropertyStatus.REJECTED) {
+            "This property is not accepting new tenant requests."
+        }
         val updated = property.copy(
             tenantId = tenantId,
-            // Tenant requests start in PENDING_APPROVAL; landlord must approve before becoming ACTIVE.
-            status = when (property.status) {
-                PropertyStatus.PENDING, PropertyStatus.REJECTED -> PropertyStatus.PENDING_APPROVAL
-                else -> property.status
-            },
+            status = PropertyStatus.PENDING_APPROVAL,
             updatedAtMillis = System.currentTimeMillis(),
         )
         propertyDao.upsert(PropertyEntity.from(updated))
         pushProperty(updated)
         notificationRepository.push(
             recipientUid = updated.landlordId,
-            type = com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType.TENANT_JOINED,
+            type = NotificationType.TENANT_JOINED,
             title = "Tenant Request",
             body = "A tenant has requested to join ${updated.address}.",
-            propertyId = updated.id
+            propertyId = updated.id,
         )
         updated
     }.fold(::ok, ::fail)
 
-    /** Landlord approves a pending tenant request and unlocks the property. */
-    suspend fun approveTenant(propertyId: String): Outcome<Unit> = runCatching {
+    suspend fun approveTenant(propertyId: String, landlordId: String): Outcome<Unit> = runCatching {
         val existing = requirePropertyEntity(propertyId)
+        require(existing.landlordId == landlordId) { "Only the landlord can approve tenant requests." }
         require(existing.status == PropertyStatus.PENDING_APPROVAL) {
             "No pending tenant request to approve."
         }
+        require(existing.tenantId != null) { "No tenant is linked to this property." }
         val updated = existing.copy(
             status = PropertyStatus.ACTIVE,
             updatedAtMillis = System.currentTimeMillis(),
@@ -133,9 +137,9 @@ class PropertyRepository(
         Unit
     }.fold(::ok, ::fail)
 
-    /** Landlord rejects the pending tenant request. Clears the tenant link so a new join can happen. */
-    suspend fun rejectTenant(propertyId: String): Outcome<Unit> = runCatching {
+    suspend fun rejectTenant(propertyId: String, landlordId: String): Outcome<Unit> = runCatching {
         val existing = requirePropertyEntity(propertyId)
+        require(existing.landlordId == landlordId) { "Only the landlord can reject tenant requests." }
         require(existing.status == PropertyStatus.PENDING_APPROVAL) {
             "No pending tenant request to reject."
         }
@@ -160,7 +164,6 @@ class PropertyRepository(
         Unit
     }.fold(::ok, ::fail)
 
-    /** Records that one party finished documenting an inspection phase (before signing). */
     suspend fun markInspectionSubmitted(
         propertyId: String,
         phase: InspectionPhase,
@@ -171,6 +174,24 @@ class PropertyRepository(
             when (phase) {
                 InspectionPhase.MOVE_IN -> "Only the landlord can submit the move-in inspection."
                 InspectionPhase.MOVE_OUT -> "Only the landlord can submit the move-out inspection."
+            }
+        }
+        when (phase) {
+            InspectionPhase.MOVE_IN -> {
+                require(existing.status == PropertyStatus.ACTIVE) {
+                    "Move-in inspection can only be submitted while the property is active."
+                }
+                require(existing.moveInInspectionSubmittedAtMillis == null) {
+                    "Move-in inspection was already submitted."
+                }
+            }
+            InspectionPhase.MOVE_OUT -> {
+                require(existing.status == PropertyStatus.MOVE_OUT) {
+                    "Move-out inspection can only be submitted during move-out."
+                }
+                require(existing.moveOutInspectionSubmittedAtMillis == null) {
+                    "Move-out inspection was already submitted."
+                }
             }
         }
         val now = System.currentTimeMillis()
@@ -189,15 +210,58 @@ class PropertyRepository(
         Unit
     }.fold(::ok, ::fail)
 
-    suspend fun updateStatus(propertyId: String, status: PropertyStatus): Outcome<Unit> = runCatching {
+    suspend fun updateStatus(
+        propertyId: String,
+        status: PropertyStatus,
+        callerUid: String,
+    ): Outcome<Unit> = runCatching {
         val existing = requirePropertyEntity(propertyId)
+        require(existing.landlordId == callerUid || existing.tenantId == callerUid) {
+            "You are not a member of this property."
+        }
+        when (status) {
+            PropertyStatus.OCCUPIED -> {
+                require(existing.status == PropertyStatus.ACTIVE) {
+                    "Move-in must be active before marking occupied."
+                }
+                require(existing.moveInInspectionSubmittedAtMillis != null) {
+                    "Move-in inspection must be submitted first."
+                }
+                require(existing.tenantId != null) { "Property has no tenant." }
+                require(
+                    inspectionRepository.isPhaseSignedByBoth(
+                        propertyId,
+                        InspectionPhase.MOVE_IN,
+                        existing.landlordId,
+                        existing.tenantId,
+                    ),
+                ) { "Both parties must sign move-in before the property is occupied." }
+            }
+            PropertyStatus.CLOSED -> {
+                require(existing.status == PropertyStatus.MOVE_OUT) {
+                    "Move-out must be in progress before closing the property."
+                }
+                require(existing.moveOutInspectionSubmittedAtMillis != null) {
+                    "Move-out inspection must be submitted first."
+                }
+                require(existing.tenantId != null) { "Property has no tenant." }
+                require(
+                    inspectionRepository.isPhaseSignedByBoth(
+                        propertyId,
+                        InspectionPhase.MOVE_OUT,
+                        existing.landlordId,
+                        existing.tenantId,
+                    ),
+                ) { "Both parties must sign move-out before closing the property." }
+            }
+            else -> error("Unsupported status transition to ${status.name}.")
+        }
         val updated = existing.copy(status = status, updatedAtMillis = System.currentTimeMillis())
         propertyDao.upsert(updated)
         pushProperty(updated.toDomain())
         Unit
     }.fold(::ok, ::fail)
 
-    /** Landlord unlocks the move-out inspection phase after move-in is fully signed. */
     suspend fun startMoveOut(propertyId: String, landlordId: String): Outcome<Property> = runCatching {
         val existing = requirePropertyEntity(propertyId)
         require(existing.landlordId == landlordId) { "Only the landlord can start move-out." }
@@ -223,7 +287,6 @@ class PropertyRepository(
         domain
     }.fold(::ok, ::fail)
 
-    /** Mirror local properties down from Firestore. */
     suspend fun syncForUser(uid: String) {
         val localBefore = propertyDao.listIdsForUser(uid)
         val byLandlord = firestore.collection(FirestorePaths.PROPERTIES)
@@ -293,8 +356,6 @@ class PropertyRepository(
         }
         return InviteCode.generate()
     }
-
-    // ---------- Firestore mapping helpers ----------
 
     private fun Property.toFirestoreMap(): Map<String, Any?> = mapOf(
         "id" to id,

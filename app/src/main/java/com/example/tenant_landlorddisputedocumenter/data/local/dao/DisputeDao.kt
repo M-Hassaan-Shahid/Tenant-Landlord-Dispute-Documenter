@@ -25,6 +25,9 @@ interface DisputeDao {
     @Query("SELECT * FROM disputes WHERE id = :id LIMIT 1")
     suspend fun get(id: String): DisputeEntity?
 
+    @Query("SELECT COUNT(*) FROM disputes WHERE itemId = :itemId AND status = 'OPEN'")
+    suspend fun countOpenForItem(itemId: String): Int
+
     @Query("DELETE FROM disputes WHERE propertyId = :propertyId")
     suspend fun deleteForProperty(propertyId: String)
 

@@ -7,6 +7,7 @@ initializeApp();
 
 /**
  * When a notification doc is created in Firestore, send FCM to the recipient's device.
+ * Uses a data-only payload so Android always delivers to onMessageReceived.
  * Deploy: firebase deploy --only functions (from repo root with firebase.json).
  */
 exports.onNotificationCreated = onDocumentCreated(
@@ -21,21 +22,24 @@ exports.onNotificationCreated = onDocumentCreated(
 
     const userSnap = await getFirestore().collection("users").doc(recipientUid).get();
     const token = userSnap.get("fcmToken");
-    if (!token) return;
+    if (!token) {
+      console.warn("No fcmToken for user", recipientUid);
+      return;
+    }
 
     const propertyId = data.propertyId || "";
     await getMessaging().send({
       token,
-      notification: {
-        title: data.title || "ProofNest",
-        body: data.body || "",
-      },
       data: {
+        title: String(data.title || "ProofNest"),
+        body: String(data.body || ""),
         type: String(data.type || "GENERIC"),
         propertyId: String(propertyId),
         notificationId: snap.id,
       },
-      android: { priority: "high" },
+      android: {
+        priority: "high",
+      },
     });
   },
 );

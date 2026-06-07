@@ -8,6 +8,7 @@ import com.example.tenant_landlorddisputedocumenter.di.ServiceContainer
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.domain.model.User
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
+import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +39,11 @@ class AuthViewModel(
     fun clearMessages() = _state.update { it.copy(errorMessage = null, infoMessage = null) }
 
     fun signIn(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
+        InputValidation.validateEmail(email)?.let { message ->
+            _state.update { it.copy(errorMessage = message) }
+            return
+        }
+        if (password.isBlank()) {
             _state.update { it.copy(errorMessage = "Enter email and password.") }
             return
         }
@@ -64,7 +69,7 @@ class AuthViewModel(
         cnic: String,
         role: UserRole,
     ) {
-        val problem = validateSignUp(email, password, confirmPassword, displayName)
+        val problem = validateSignUp(email, password, confirmPassword, displayName, phone, cnic)
         if (problem != null) {
             _state.update { it.copy(errorMessage = problem) }
             return
@@ -83,8 +88,8 @@ class AuthViewModel(
     }
 
     fun sendPasswordReset(email: String) {
-        if (email.isBlank()) {
-            _state.update { it.copy(errorMessage = "Enter your email first.") }
+        InputValidation.validateEmail(email)?.let { message ->
+            _state.update { it.copy(errorMessage = message) }
             return
         }
         viewModelScope.launch {
@@ -111,14 +116,14 @@ class AuthViewModel(
         password: String,
         confirmPassword: String,
         displayName: String,
-    ): String? = when {
-        email.isBlank() -> "Email is required."
-        !email.contains("@") -> "Enter a valid email."
-        password.length < 6 -> "Password must be at least 6 characters."
-        password != confirmPassword -> "Passwords don't match."
-        displayName.isBlank() -> "Please enter your name."
-        else -> null
-    }
+        phone: String,
+        cnic: String,
+    ): String? =
+        InputValidation.validateEmail(email)
+            ?: InputValidation.validatePassword(password, confirmPassword)
+            ?: InputValidation.validateDisplayName(displayName)
+            ?: InputValidation.validatePhone(phone)
+            ?: InputValidation.validateCnic(cnic)
 }
 
 class AuthViewModelFactory(private val container: ServiceContainer) : ViewModelProvider.Factory {

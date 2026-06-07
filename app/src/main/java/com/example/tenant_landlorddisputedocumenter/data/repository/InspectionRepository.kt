@@ -5,15 +5,18 @@ import android.util.Base64
 import com.example.tenant_landlorddisputedocumenter.data.SyncResult
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.ItemDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.PhotoDao
+import com.example.tenant_landlorddisputedocumenter.data.local.dao.PropertyDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.RoomDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.SignatureDao
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.ItemEntity
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.PhotoEntity
+import com.example.tenant_landlorddisputedocumenter.data.local.entity.PropertyEntity
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.RoomEntity
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.SignatureEntity
 import com.example.tenant_landlorddisputedocumenter.data.remote.FirestorePaths
 import com.example.tenant_landlorddisputedocumenter.data.remote.firestoreWrite
 import com.example.tenant_landlorddisputedocumenter.data.remote.stringList
+import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionEditPolicy
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.ChecklistItem
 import com.example.tenant_landlorddisputedocumenter.domain.model.ConditionRating
@@ -23,6 +26,7 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.Photo
 import com.example.tenant_landlorddisputedocumenter.domain.model.Signature
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
 import com.example.tenant_landlorddisputedocumenter.util.Ids
+import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import com.example.tenant_landlorddisputedocumenter.data.remote.CloudinaryUploader
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -36,6 +40,7 @@ import java.net.URL
 
 class InspectionRepository(
     private val context: Context,
+    private val propertyDao: PropertyDao,
     private val roomDao: RoomDao,
     private val itemDao: ItemDao,
     private val photoDao: PhotoDao,
@@ -50,11 +55,18 @@ class InspectionRepository(
         roomDao.observeForProperty(propertyId).map { list -> list.map { it.toDomain() } }
 
     suspend fun addRoom(propertyId: String, name: String): InspectionRoom {
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "Room name cannot be empty." }
+        val property = requireProperty(propertyId)
+        requireStructureEditable(property)
         val existing = roomDao.listForProperty(propertyId)
+        require(existing.none { it.name.equals(trimmed, ignoreCase = true) }) {
+            "A room with this name already exists."
+        }
         val room = InspectionRoom(
             id = Ids.newId(),
             propertyId = propertyId,
-            name = name.trim(),
+            name = trimmed,
             sortOrder = existing.size,
         )
         roomDao.upsert(RoomEntity.from(room))
@@ -63,6 +75,9 @@ class InspectionRepository(
     }
 
     suspend fun deleteRoom(roomId: String) {
+        val room = roomDao.get(roomId) ?: error("Room not found.")
+        val property = requireProperty(room.propertyId)
+        requireStructureEditable(property)
         val items = itemDao.listForRoom(roomId)
         val itemIds = items.map { it.id }
         if (itemIds.isNotEmpty()) {
@@ -108,11 +123,19 @@ class InspectionRepository(
         itemDao.observeForProperty(propertyId).map { list -> list.map { it.toDomain() } }
 
     suspend fun addItem(propertyId: String, roomId: String, name: String): ChecklistItem {
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "Item name cannot be empty." }
+        val property = requireProperty(propertyId)
+        requireStructureEditable(property)
+        val siblings = itemDao.listForRoom(roomId)
+        require(siblings.none { it.name.equals(trimmed, ignoreCase = true) }) {
+            "An item with this name already exists in this room."
+        }
         val item = ChecklistItem(
             id = Ids.newId(),
             roomId = roomId,
             propertyId = propertyId,
-            name = name.trim(),
+            name = trimmed,
         )
         itemDao.upsert(ItemEntity.from(item))
         pushItem(item)
@@ -120,19 +143,22 @@ class InspectionRepository(
     }
 
     suspend fun updateItem(item: ChecklistItem) {
+        requireRecordsEditable(item.propertyId, null)
         itemDao.upsert(ItemEntity.from(item))
         pushItem(item)
     }
 
     suspend fun setNote(itemId: String, phase: InspectionPhase, note: String) {
         val existing = itemDao.get(itemId)?.toDomain() ?: return
+        requireRecordsEditable(existing.propertyId, phase)
+        val trimmed = InputValidation.trimToMax(note)
         val updated = when (phase) {
             InspectionPhase.MOVE_IN -> existing.copy(
-                moveInNote = note,
+                moveInNote = trimmed,
                 moveInTimestamp = System.currentTimeMillis(),
             )
             InspectionPhase.MOVE_OUT -> existing.copy(
-                moveOutNote = note,
+                moveOutNote = trimmed,
                 moveOutTimestamp = System.currentTimeMillis(),
             )
         }
@@ -142,6 +168,7 @@ class InspectionRepository(
 
     suspend fun setRating(itemId: String, phase: InspectionPhase, rating: ConditionRating) {
         val existing = itemDao.get(itemId)?.toDomain() ?: return
+        requireRecordsEditable(existing.propertyId, phase)
         val updated = when (phase) {
             InspectionPhase.MOVE_IN -> existing.copy(
                 moveInRating = rating,
@@ -162,6 +189,7 @@ class InspectionRepository(
         photoDao.observeForItem(itemId, phase).map { list -> list.map { it.toDomain() } }
 
     suspend fun savePhoto(photo: Photo) {
+        requireRecordsEditable(photo.propertyId, photo.phase)
         photoDao.upsert(PhotoEntity.from(photo))
         val item = itemDao.get(photo.itemId)?.toDomain() ?: return
         val withPhotoId = when (photo.phase) {
@@ -223,8 +251,25 @@ class InspectionRepository(
         pngBase64: String,
         notifyRecipientUid: String?,
     ): Signature {
+        require(pngBase64.isNotBlank()) { "Signature is empty." }
+        val property = requireProperty(propertyId)
+        require(property.status != PropertyStatus.CLOSED) { "Property record is closed." }
+        require(signerUid == property.landlordId || signerUid == property.tenantId) {
+            "You are not a member of this property."
+        }
+        when (phase) {
+            InspectionPhase.MOVE_IN -> require(property.moveInInspectionSubmittedAtMillis != null) {
+                "Move-in inspection must be submitted before signing."
+            }
+            InspectionPhase.MOVE_OUT -> require(property.moveOutInspectionSubmittedAtMillis != null) {
+                "Move-out inspection must be submitted before signing."
+            }
+        }
+        require(signatureDao.countFor(propertyId, phase, signerUid) == 0) {
+            "You have already signed this phase."
+        }
         val signature = Signature(
-            id = Ids.newId(),
+            id = signatureDocumentId(propertyId, phase, signerUid),
             propertyId = propertyId,
             signerUid = signerUid,
             signerRole = signerRole,
@@ -339,6 +384,39 @@ class InspectionRepository(
         onSuccess = { SyncResult.ok() },
         onFailure = { SyncResult.from("inspection data", it) },
     )
+
+    private suspend fun requireProperty(propertyId: String): PropertyEntity =
+        propertyDao.get(propertyId) ?: error("Property not found.")
+
+    private suspend fun requireStructureEditable(property: PropertyEntity) {
+        require(property.status != PropertyStatus.CLOSED) { "Property record is closed." }
+        require(isStructureLocked(property.id, property.status).not()) {
+            "Room and checklist structure is locked for this property."
+        }
+    }
+
+    private suspend fun requireRecordsEditable(propertyId: String, phase: InspectionPhase?) {
+        val property = requireProperty(propertyId)
+        require(InspectionEditPolicy.canEditRecords(property)) {
+            "Inspection records are locked after submission."
+        }
+        if (phase != null) {
+            require(InspectionEditPolicy.canEditRecordsForPhase(property, phase)) {
+                "This inspection phase is not open for edits."
+            }
+        }
+    }
+
+    suspend fun validateCapture(propertyId: String, phase: InspectionPhase, callerUid: String) {
+        val property = requireProperty(propertyId)
+        InspectionEditPolicy.validateCapture(property, phase, callerUid)?.let { error(it) }
+    }
+
+    private fun signatureDocumentId(
+        propertyId: String,
+        phase: InspectionPhase,
+        signerUid: String,
+    ): String = "${propertyId}_${phase.name}_$signerUid"
 
     private suspend fun uploadSignatureImage(signature: Signature): String {
         val bytes = Base64.decode(signature.pngBase64, Base64.DEFAULT)

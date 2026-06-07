@@ -40,7 +40,9 @@ class MainActivity : AppCompatActivity() {
 
     private val requestNotificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { /* optional */ }
+    ) { granted ->
+        if (granted) registerFcmToken()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +86,7 @@ class MainActivity : AppCompatActivity() {
             setupWithNavController(navController)
         }
         requestNotificationPermissionIfNeeded()
+        registerFcmToken()
         bindNotificationBadge()
         consumeDeepLink(intent)
     }
@@ -132,6 +135,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun registerFcmToken() {
+        val uid = container.firebaseAuth.currentUser?.uid ?: return
+        lifecycleScope.launch {
+            runCatching { container.syncCoordinator.registerFcmToken(uid) }
+        }
+    }
+
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -152,6 +162,7 @@ class MainActivity : AppCompatActivity() {
         val uid = container.firebaseAuth.currentUser?.uid ?: return
         lifecycleScope.launch {
             runCatching { container.inspectionRepository.syncPendingUploads() }
+            runCatching { container.notificationRepository.syncForUser(uid) }
             runCatching {
                 val properties = container.propertyRepository.observeForUser(uid).first()
                 container.notificationRepository.ensureLeaseEndingReminders(uid, properties)

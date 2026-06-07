@@ -21,6 +21,7 @@ import com.example.tenant_landlorddisputedocumenter.databinding.FragmentProfileB
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.ui.auth.OnboardingActivity
 import com.example.tenant_landlorddisputedocumenter.ui.showPhotoViewer
+import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -108,11 +109,21 @@ class ProfileFragment : Fragment() {
         val app = requireContext().applicationContext as ProofNestApplication
         val uid = app.container.authRepository.currentUserId.value ?: return
 
+        val mime = requireContext().contentResolver.getType(uri)
+        if (mime != null && mime !in InputValidation.ALLOWED_PROFILE_MIME_TYPES) {
+            Toast.makeText(requireContext(), R.string.profile_photo_invalid_type, Toast.LENGTH_LONG).show()
+            return
+        }
+
         binding.buttonChangePhoto.isEnabled = false
         viewLifecycleOwner.lifecycleScope.launch {
             Toast.makeText(requireContext(), R.string.profile_photo_uploading, Toast.LENGTH_SHORT).show()
             try {
                 val cacheFile = copyUriToCache(uri)
+                if (cacheFile.length() > InputValidation.MAX_PROFILE_PHOTO_BYTES) {
+                    Toast.makeText(requireContext(), R.string.profile_photo_too_large, Toast.LENGTH_LONG).show()
+                    return@launch
+                }
                 val remoteUrl = app.container.cloudinary.upload(cacheFile, "avatars/$uid")
                 when (val outcome = app.container.authRepository.updatePhotoUrl(uid, remoteUrl)) {
                     is Outcome.Success ->

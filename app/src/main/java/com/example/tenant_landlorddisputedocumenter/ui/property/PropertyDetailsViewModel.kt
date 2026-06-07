@@ -3,6 +3,7 @@ package com.example.tenant_landlorddisputedocumenter.ui.property
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.tenant_landlorddisputedocumenter.data.repository.AuthRepository
 import com.example.tenant_landlorddisputedocumenter.data.repository.PropertyRepository
 import com.example.tenant_landlorddisputedocumenter.di.ServiceContainer
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
@@ -25,10 +26,10 @@ data class PropertyDetailsUiState(
 )
 
 class PropertyDetailsViewModel(
+    private val authRepository: AuthRepository,
     private val propertyRepository: PropertyRepository,
 ) : ViewModel() {
 
-    /** Cached inspection phase for navigation (move-in vs move-out). */
     private val _inspectionPhase = MutableStateFlow(InspectionPhase.MOVE_IN)
     val inspectionPhase = _inspectionPhase.asStateFlow()
 
@@ -51,9 +52,10 @@ class PropertyDetailsViewModel(
 
     fun approveTenant() {
         val id = _propertyId.value ?: return
+        val landlordId = authRepository.currentUserId.value ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            when (val result = propertyRepository.approveTenant(id)) {
+            when (val result = propertyRepository.approveTenant(id, landlordId)) {
                 is Outcome.Success -> _uiState.update { it.copy(isLoading = false, actionSuccess = "Tenant approved!") }
                 is Outcome.Failure -> _uiState.update { it.copy(isLoading = false, error = result.userMessage) }
             }
@@ -62,9 +64,10 @@ class PropertyDetailsViewModel(
 
     fun rejectTenant() {
         val id = _propertyId.value ?: return
+        val landlordId = authRepository.currentUserId.value ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            when (val result = propertyRepository.rejectTenant(id)) {
+            when (val result = propertyRepository.rejectTenant(id, landlordId)) {
                 is Outcome.Success -> _uiState.update { it.copy(isLoading = false, actionSuccess = "Tenant request rejected.") }
                 is Outcome.Failure -> _uiState.update { it.copy(isLoading = false, error = result.userMessage) }
             }
@@ -99,5 +102,5 @@ class PropertyDetailsViewModel(
 class PropertyDetailsViewModelFactory(private val container: ServiceContainer) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        PropertyDetailsViewModel(container.propertyRepository) as T
+        PropertyDetailsViewModel(container.authRepository, container.propertyRepository) as T
 }

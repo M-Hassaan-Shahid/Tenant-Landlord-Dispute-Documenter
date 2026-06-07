@@ -52,7 +52,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="top"
-                    android:inputType="textMultiLine"
+                    android:inputType="textCapSentences|textMultiLine"
+                    android:maxLength="500"
                     android:minLines="4" />
             </com.google.android.material.textfield.TextInputLayout>
 

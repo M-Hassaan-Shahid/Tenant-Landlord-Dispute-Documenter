@@ -33,8 +33,11 @@ class ProofNestApplication : Application() {
         val channel = NotificationChannel(
             getString(R.string.default_notification_channel_id),
             getString(R.string.default_notification_channel_name),
-            NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply { description = "Inspection events and lease reminders" }
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Inspection events and lease reminders"
+            enableVibration(true)
+        }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 }

@@ -13,6 +13,7 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.Dispute
 import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.NotificationType
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
+import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,6 +70,14 @@ class DisputeViewModel(
             _uiState.update { it.copy(error = "Please provide a reason for the dispute.") }
             return
         }
+        InputValidation.validateTextLength(reason, "Reason")?.let { message ->
+            _uiState.update { it.copy(error = message) }
+            return
+        }
+        if (authRepository.currentUserRole.value != UserRole.TENANT) {
+            _uiState.update { it.copy(error = "Only tenants can raise disputes from this flow.") }
+            return
+        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -112,13 +121,13 @@ class DisputeViewModel(
 
     fun resolveDispute(disputeId: String, resolutionNote: String, status: DisputeStatus) {
         val propertyId = _propertyId.value ?: return
+        val uid = authRepository.currentUserId.value ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
-                disputeRepository.resolve(disputeId, resolutionNote, status)
+                disputeRepository.resolve(disputeId, uid, resolutionNote, status)
                 val property = propertyRepository.getProperty(propertyId)
-                val uid = authRepository.currentUserId.value
-                if (property != null && uid != null) {
+                if (property != null) {
                     val recipientUid = when (uid) {
                         property.landlordId -> property.tenantId
                         property.tenantId -> property.landlordId

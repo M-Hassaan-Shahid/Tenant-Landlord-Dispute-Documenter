@@ -34,6 +34,11 @@ class SyncCache {
         userSyncedAt.remove(uid)
     }
 
+    fun clearAll() {
+        propertySyncedAt.clear()
+        userSyncedAt.clear()
+    }
+
     companion object {
         const val PROPERTY_TTL_MS = 3 * 60 * 1000L
         const val USER_TTL_MS = 5 * 60 * 1000L

@@ -55,6 +55,8 @@
     <string name="profile_photo_uploading">Uploading photo…</string>
     <string name="profile_photo_updated">Profile photo updated</string>
     <string name="profile_photo_failed">Could not update photo. Try again.</string>
+    <string name="profile_photo_invalid_type">Please choose a JPEG, PNG, or WebP image.</string>
+    <string name="profile_photo_too_large">Photo must be 5 MB or smaller.</string>
     <string name="property_details_title">Property</string>
     <string name="invite_code_label">Invite code — share with tenant</string>
     <string name="invite_copy">Copy code</string>
@@ -231,6 +233,7 @@
     <string name="capture_permission_message">We need camera (and ideally location) access to capture timestamped proof.</string>
     <string name="capture_grant">Grant permissions</string>
     <string name="capture_permission_denied">Camera permission is required to capture proof.</string>
+    <string name="capture_not_allowed">You cannot capture photos for this inspection right now.</string>
 
     <!-- Review &amp; sign -->
     <string name="review_sign_move_in">Review &amp; sign — Move-in</string>

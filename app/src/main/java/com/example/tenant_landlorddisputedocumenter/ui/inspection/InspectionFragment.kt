@@ -28,6 +28,8 @@ class InspectionFragment : Fragment() {
     private val binding get() = _binding!!
     private var hasRooms = false
     private var isSubmitting = false
+    private var allItemsRated = false
+    private var hasPhasePhoto = false
 
     private val args: InspectionFragmentArgs by lazy {
         InspectionFragmentArgs.fromBundle(requireArguments())
@@ -90,6 +92,12 @@ class InspectionFragment : Fragment() {
                     binding.inspectionProgress.progressInspection.max = 100
                     binding.inspectionProgress.progressInspection.setProgressCompat(pct, true)
                     binding.inspectionProgress.textProgressPercent.text = "$pct%"
+                    allItemsRated = items.isNotEmpty() && rated == items.size
+                    hasPhasePhoto = items.any { item ->
+                        if (phase == InspectionPhase.MOVE_IN) item.moveInPhotoIds.isNotEmpty()
+                        else item.moveOutPhotoIds.isNotEmpty()
+                    }
+                    updateFinishButton()
                 }
             }
         }
@@ -144,7 +152,8 @@ class InspectionFragment : Fragment() {
     }
 
     private fun updateFinishButton() {
-        binding.buttonFinishInspection.isEnabled = hasRooms && !isSubmitting
+        binding.buttonFinishInspection.isEnabled =
+            hasRooms && allItemsRated && hasPhasePhoto && !isSubmitting
         binding.buttonFinishInspection.text = if (isSubmitting) {
             getString(R.string.finish_inspection_saving)
         } else {

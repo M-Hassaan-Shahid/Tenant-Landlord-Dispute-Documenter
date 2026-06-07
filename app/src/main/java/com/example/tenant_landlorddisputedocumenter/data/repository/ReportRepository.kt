@@ -8,6 +8,8 @@ import com.example.tenant_landlorddisputedocumenter.data.local.dao.PropertyDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.RoomDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.SignatureDao
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.UserDao
+import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.util.PdfReportGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -28,7 +30,25 @@ class ReportRepository(
     private val userDao: UserDao,
 ) {
 
+    suspend fun validateReportReady(propertyId: String) {
+        val property = propertyDao.get(propertyId)?.toDomain() ?: error("Property not found.")
+        val tenantId = property.tenantId ?: error("Property has no tenant.")
+        when (property.status) {
+            PropertyStatus.CLOSED -> Unit
+            PropertyStatus.MOVE_OUT -> {
+                require(hasBothSignatures(propertyId, InspectionPhase.MOVE_OUT, property.landlordId, tenantId)) {
+                    "Both parties must sign move-out before generating the report."
+                }
+            }
+            else -> error("Report is available after move-out is signed by both parties, or once the property is closed.")
+        }
+        require(hasBothSignatures(propertyId, InspectionPhase.MOVE_IN, property.landlordId, tenantId)) {
+            "Both parties must sign move-in before generating the report."
+        }
+    }
+
     suspend fun generateReport(propertyId: String): File? = withContext(Dispatchers.IO) {
+        validateReportReady(propertyId)
         val property = propertyDao.get(propertyId)?.toDomain() ?: return@withContext null
         val rooms = roomDao.listForProperty(propertyId).map { it.toDomain() }
 
@@ -56,5 +76,17 @@ class ReportRepository(
         )
 
         PdfReportGenerator(context).generate(data)
+    }
+
+    private suspend fun hasBothSignatures(
+        propertyId: String,
+        phase: InspectionPhase,
+        landlordId: String,
+        tenantId: String,
+    ): Boolean {
+        val signatures = signatureDao.listForProperty(propertyId)
+            .filter { it.phase == phase }
+        return signatures.any { it.signerUid == landlordId } &&
+            signatures.any { it.signerUid == tenantId }
     }
 }

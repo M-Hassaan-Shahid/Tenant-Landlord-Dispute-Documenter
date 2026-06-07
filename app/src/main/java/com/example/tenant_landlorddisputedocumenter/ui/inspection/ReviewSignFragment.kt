@@ -17,6 +17,7 @@ import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentReviewSignBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.InspectionPhase
+import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.ui.dispute.showDisputeItemPicker
 import com.example.tenant_landlorddisputedocumenter.ui.refreshPropertyInBackground
@@ -207,7 +208,11 @@ class ReviewSignFragment : Fragment() {
                                 InspectionPhase.MOVE_IN -> PropertyStatus.OCCUPIED
                                 InspectionPhase.MOVE_OUT -> PropertyStatus.CLOSED
                             }
-                            propertyRepo.updateStatus(propertyId, newStatus)
+                            when (val statusResult = propertyRepo.updateStatus(propertyId, newStatus, uid)) {
+                                is Outcome.Failure ->
+                                    error(statusResult.userMessage ?: "Could not update property status.")
+                                is Outcome.Success -> Unit
+                            }
                         }
                     }
                 }.onSuccess {

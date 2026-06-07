@@ -77,6 +77,7 @@ class CameraCaptureActivity : AppCompatActivity() {
         else InspectionPhase.MOVE_IN
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+        validateCaptureAccess()
         requestLocationIfNeeded()
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -99,6 +100,27 @@ class CameraCaptureActivity : AppCompatActivity() {
             val date = java.text.SimpleDateFormat("d MMM yyyy, HH:mm", java.util.Locale.getDefault())
                 .format(java.util.Date())
             binding.barMetadata.text = getString(R.string.capture_metadata_format, coords, date)
+        }
+    }
+
+    private fun validateCaptureAccess() {
+        lifecycleScope.launch {
+            val container = (application as ProofNestApplication).container
+            val uid = container.authRepository.currentUserId.value ?: run {
+                Toast.makeText(this@CameraCaptureActivity, R.string.capture_not_allowed, Toast.LENGTH_LONG).show()
+                finish()
+                return@launch
+            }
+            runCatching {
+                container.inspectionRepository.validateCapture(propertyId, phase, uid)
+            }.onFailure {
+                Toast.makeText(
+                    this@CameraCaptureActivity,
+                    it.localizedMessage ?: getString(R.string.capture_not_allowed),
+                    Toast.LENGTH_LONG,
+                ).show()
+                finish()
+            }
         }
     }
 

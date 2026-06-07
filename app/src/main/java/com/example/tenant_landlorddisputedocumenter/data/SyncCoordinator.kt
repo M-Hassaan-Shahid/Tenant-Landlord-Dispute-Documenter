@@ -13,19 +13,23 @@ class SyncCoordinator(
 
     /** Fast path for dashboard: property list + alerts, no per-property deep sync. */
     suspend fun syncDashboardForUser(uid: String, force: Boolean = false): SyncResult {
+        var result = registerFcmTokenResult(uid)
         if (!force && cache.isUserFresh(uid)) {
-            return SyncResult.ok()
+            return result
         }
-        var result = syncUserBasics(uid)
-        cache.markUserSynced(uid)
+        result = result.merge(syncUserBasics(uid))
+        if (result.succeeded) {
+            cache.markUserSynced(uid)
+        }
         return result
     }
 
     suspend fun syncAllForUser(uid: String, force: Boolean = false): SyncResult {
+        var result = registerFcmTokenResult(uid)
         if (!force && cache.isUserFresh(uid)) {
-            return SyncResult.ok()
+            return result
         }
-        var result = syncUserBasics(uid)
+        result = result.merge(syncUserBasics(uid))
         val properties = container.propertyRepository.observeForUser(uid).first()
         for (property in properties) {
             result = result.merge(syncPropertyData(property.id, force = true))
@@ -35,7 +39,9 @@ class SyncCoordinator(
                 container.notificationRepository.ensureLeaseEndingReminders(uid, properties)
             }.exceptionOrNull()),
         )
-        cache.markUserSynced(uid)
+        if (result.succeeded) {
+            cache.markUserSynced(uid)
+        }
         return result
     }
 
@@ -93,11 +99,16 @@ class SyncCoordinator(
         cache.invalidateProperty(propertyId)
     }
 
+    suspend fun registerFcmToken(uid: String) {
+        val token = FirebaseMessaging.getInstance().token.await()
+        container.authRepository.updateFcmToken(uid, token)
+    }
+
+    private suspend fun registerFcmTokenResult(uid: String): SyncResult =
+        SyncResult.from("FCM token", runCatching { registerFcmToken(uid) }.exceptionOrNull())
+
     private suspend fun syncUserBasics(uid: String): SyncResult {
         var result = SyncResult.ok()
-        result = result.merge(
-            SyncResult.from("FCM token", runCatching { registerFcmToken(uid) }.exceptionOrNull()),
-        )
         result = result.merge(
             SyncResult.from("profile", runCatching {
                 container.authRepository.refreshProfile(uid)
@@ -135,8 +146,4 @@ class SyncCoordinator(
         return result
     }
 
-    private suspend fun registerFcmToken(uid: String) {
-        val token = FirebaseMessaging.getInstance().token.await()
-        container.authRepository.updateFcmToken(uid, token)
-    }
 }

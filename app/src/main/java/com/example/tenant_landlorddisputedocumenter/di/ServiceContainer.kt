@@ -44,6 +44,7 @@ class ServiceContainer(context: Context) {
     val inspectionRepository: InspectionRepository by lazy {
         InspectionRepository(
             appContext,
+            db.propertyDao(),
             db.roomDao(),
             db.itemDao(),
             db.photoDao(),
@@ -68,6 +69,7 @@ class ServiceContainer(context: Context) {
     }
     val notificationRepository: NotificationRepository by lazy {
         NotificationRepository(
+            appContext,
             db.notificationDao(),
             firestore,
             currentUserId = { firebaseAuth.currentUser?.uid },

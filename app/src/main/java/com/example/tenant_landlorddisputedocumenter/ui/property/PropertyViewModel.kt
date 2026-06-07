@@ -8,6 +8,8 @@ import com.example.tenant_landlorddisputedocumenter.data.repository.PropertyRepo
 import com.example.tenant_landlorddisputedocumenter.di.ServiceContainer
 import com.example.tenant_landlorddisputedocumenter.domain.model.Outcome
 import com.example.tenant_landlorddisputedocumenter.domain.model.Property
+import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
+import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,10 +42,18 @@ class PropertyViewModel(
             _uiState.update { it.copy(error = "Must be logged in.") }
             return
         }
-        val rent = rentStr.toDoubleOrNull()
-        val deposit = depositStr.toDoubleOrNull()
-        if (address.isBlank() || rent == null || deposit == null) {
-            _uiState.update { it.copy(error = "Invalid input fields.") }
+        if (authRepository.currentUserRole.value != UserRole.LANDLORD) {
+            _uiState.update { it.copy(error = "Only landlords can create properties.") }
+            return
+        }
+        InputValidation.validateAddress(address)?.let { message ->
+            _uiState.update { it.copy(error = message) }
+            return
+        }
+        val rent = InputValidation.validateFinancialAmount(rentStr, "Rent")
+        val deposit = InputValidation.validateFinancialAmount(depositStr, "Deposit")
+        if (rent == null || deposit == null) {
+            _uiState.update { it.copy(error = "Rent and deposit must be valid amounts of at least ${InputValidation.MIN_RENT.toInt()}.") }
             return
         }
         if (leaseEndMillis <= leaseStartMillis) {
@@ -67,6 +77,10 @@ class PropertyViewModel(
         val uid = authRepository.currentUserId.value
         if (uid == null) {
             _uiState.update { it.copy(error = "Must be logged in.") }
+            return
+        }
+        if (authRepository.currentUserRole.value != UserRole.TENANT) {
+            _uiState.update { it.copy(error = "Only tenants can join properties with an invite code.") }
             return
         }
         if (code.isBlank() || code.length != 6) {

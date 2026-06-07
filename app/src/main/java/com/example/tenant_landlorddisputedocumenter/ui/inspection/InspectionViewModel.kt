@@ -86,6 +86,10 @@ class InspectionViewModel(
 
     fun addItem(roomId: String, name: String) {
         val propertyId = _propertyId.value ?: return
+        if (name.isBlank()) {
+            _uiState.update { it.copy(error = "Item name cannot be empty.") }
+            return
+        }
         viewModelScope.launch {
             runCatching { inspectionRepository.addItem(propertyId, roomId, name) }
                 .onFailure { _uiState.update { s -> s.copy(error = it.localizedMessage) } }
@@ -120,11 +124,23 @@ class InspectionViewModel(
             _uiState.update { it.copy(error = "Add at least one checklist item before finishing.") }
             return
         }
-        val ratedCount = items.count { item ->
-            if (phase == InspectionPhase.MOVE_IN) item.moveInRating != null else item.moveOutRating != null
+        val unrated = items.filter { item ->
+            if (phase == InspectionPhase.MOVE_IN) item.moveInRating == null else item.moveOutRating == null
         }
-        if (ratedCount == 0) {
-            _uiState.update { it.copy(error = "Rate at least one item before finishing the inspection.") }
+        if (unrated.isNotEmpty()) {
+            _uiState.update {
+                it.copy(error = "Rate every checklist item before finishing (${unrated.size} remaining).")
+            }
+            return
+        }
+        val hasPhasePhoto = items.any { item ->
+            if (phase == InspectionPhase.MOVE_IN) item.moveInPhotoIds.isNotEmpty()
+            else item.moveOutPhotoIds.isNotEmpty()
+        }
+        if (!hasPhasePhoto) {
+            _uiState.update {
+                it.copy(error = "Capture at least one photo for this inspection before finishing.")
+            }
             return
         }
         viewModelScope.launch {

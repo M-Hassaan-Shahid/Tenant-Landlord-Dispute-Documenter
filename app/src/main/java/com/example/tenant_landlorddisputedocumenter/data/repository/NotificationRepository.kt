@@ -1,6 +1,8 @@
 package com.example.tenant_landlorddisputedocumenter.data.repository
 
+import android.content.Context
 import com.example.tenant_landlorddisputedocumenter.data.SyncResult
+import com.example.tenant_landlorddisputedocumenter.notifications.SystemNotificationHelper
 import com.example.tenant_landlorddisputedocumenter.data.local.dao.NotificationDao
 import com.example.tenant_landlorddisputedocumenter.data.local.entity.NotificationEntity
 import com.example.tenant_landlorddisputedocumenter.data.remote.FirestorePaths
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 
 class NotificationRepository(
+    private val appContext: Context,
     private val notificationDao: NotificationDao,
     private val firestore: FirebaseFirestore,
     private val currentUserId: () -> String?,
@@ -33,6 +36,25 @@ class NotificationRepository(
         body: String,
         propertyId: String? = null,
     ) {
+        require(recipientUid.isNotBlank()) { "Notification recipient is required." }
+        require(title.isNotBlank()) { "Notification title is required." }
+        val senderUid = currentUserId()
+        require(senderUid != null) { "Must be signed in to send notifications." }
+        if (recipientUid == senderUid && type != NotificationType.LEASE_ENDING) {
+            error("Cannot send a notification to yourself.")
+        }
+        if (propertyId != null) {
+            val propertySnap = firestore.collection(FirestorePaths.PROPERTIES).document(propertyId).get().await()
+            require(propertySnap.exists()) { "Property not found for notification." }
+            val landlordId = propertySnap.getString("landlordId")
+            val tenantId = propertySnap.getString("tenantId")
+            require(senderUid == landlordId || senderUid == tenantId) {
+                "You are not a member of this property."
+            }
+            require(recipientUid == landlordId || recipientUid == tenantId) {
+                "Recipient must be the landlord or tenant of this property."
+            }
+        }
         val notification = AppNotification(
             id = Ids.newId(),
             recipientUid = recipientUid,
@@ -44,6 +66,7 @@ class NotificationRepository(
         pushNotification(notification)
         if (recipientUid == currentUserId()) {
             notificationDao.upsert(NotificationEntity.from(notification))
+            SystemNotificationHelper.showIfNew(appContext, notification)
         }
     }
 
@@ -118,6 +141,9 @@ class NotificationRepository(
             .filter { it !in remoteIds }
             .forEach { notificationDao.delete(it) }
         notificationDao.upsertAll(notifications.map(NotificationEntity::from))
+        if (uid == currentUserId()) {
+            notifications.filter { !it.read }.forEach { SystemNotificationHelper.showIfNew(appContext, it) }
+        }
     }.fold(
         onSuccess = { SyncResult.ok() },
         onFailure = { SyncResult.from("notifications", it) },

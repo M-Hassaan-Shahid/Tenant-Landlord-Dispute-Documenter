@@ -11,6 +11,7 @@ import com.example.tenant_landlorddisputedocumenter.domain.model.Dispute
 import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.UserRole
 import com.example.tenant_landlorddisputedocumenter.util.Ids
+import com.example.tenant_landlorddisputedocumenter.util.InputValidation
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -36,30 +37,49 @@ class DisputeRepository(
         counterPhotoIds: List<String> = emptyList(),
         counterNote: String = "",
     ): Dispute {
+        val trimmedReason = InputValidation.trimToMax(reason)
+        require(trimmedReason.isNotBlank()) { "Please provide a reason for the dispute." }
+        require(disputeDao.countOpenForItem(itemId) == 0) {
+            "An open dispute already exists for this item."
+        }
+        val trimmedCounterNote = InputValidation.trimToMax(counterNote)
         val dispute = Dispute(
             id = Ids.newId(),
             propertyId = propertyId,
             itemId = itemId,
             raisedByUid = raisedByUid,
             raisedByRole = raisedByRole,
-            reason = reason.trim(),
+            reason = trimmedReason,
             counterPhotoIds = counterPhotoIds,
-            counterNote = counterNote.trim(),
+            counterNote = trimmedCounterNote,
         )
         disputeDao.upsert(DisputeEntity.from(dispute))
-        pushDispute(dispute)
+        pushDisputeWithLock(dispute)
         return dispute
     }
 
-    suspend fun resolve(disputeId: String, resolutionNote: String, status: DisputeStatus) {
-        val existing = disputeDao.get(disputeId)?.toDomain() ?: return
+    suspend fun resolve(
+        disputeId: String,
+        resolverUid: String,
+        resolutionNote: String,
+        status: DisputeStatus,
+    ) {
+        require(status == DisputeStatus.RESOLVED || status == DisputeStatus.UNRESOLVED) {
+            "Invalid dispute resolution status."
+        }
+        val existing = disputeDao.get(disputeId)?.toDomain() ?: error("Dispute not found.")
+        require(existing.status == DisputeStatus.OPEN) { "This dispute is already closed." }
+        require(existing.raisedByUid != resolverUid) {
+            "You cannot resolve a dispute you raised."
+        }
+        val trimmedNote = InputValidation.trimToMax(resolutionNote)
         val updated = existing.copy(
-            resolutionNote = resolutionNote.trim(),
+            resolutionNote = trimmedNote,
             status = status,
             resolvedAtMillis = System.currentTimeMillis(),
         )
         disputeDao.upsert(DisputeEntity.from(updated))
-        pushDispute(updated)
+        pushDisputeAndReleaseLock(updated)
     }
 
     suspend fun syncForProperty(propertyId: String): SyncResult = runCatching {
@@ -72,13 +92,46 @@ class DisputeRepository(
         onFailure = { SyncResult.from("disputes", it) },
     )
 
-    private suspend fun pushDispute(dispute: Dispute) {
+    private suspend fun pushDisputeWithLock(dispute: Dispute) {
         syncCache.invalidateProperty(dispute.propertyId)
         firestoreWrite("dispute") {
-            firestore.collection(FirestorePaths.DISPUTES).document(dispute.id)
-                .set(dispute.toFirestoreMap()).await()
+            val batch = firestore.batch()
+            val lockRef = firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)
+                .document(disputeLockId(dispute.propertyId, dispute.itemId))
+            batch.set(
+                lockRef,
+                mapOf(
+                    "propertyId" to dispute.propertyId,
+                    "itemId" to dispute.itemId,
+                    "disputeId" to dispute.id,
+                    "raisedByUid" to dispute.raisedByUid,
+                ),
+            )
+            batch.set(
+                firestore.collection(FirestorePaths.DISPUTES).document(dispute.id),
+                dispute.toFirestoreMap(),
+            )
+            batch.commit().await()
         }
     }
+
+    private suspend fun pushDisputeAndReleaseLock(dispute: Dispute) {
+        syncCache.invalidateProperty(dispute.propertyId)
+        firestoreWrite("dispute") {
+            val batch = firestore.batch()
+            batch.set(
+                firestore.collection(FirestorePaths.DISPUTES).document(dispute.id),
+                dispute.toFirestoreMap(),
+            )
+            batch.delete(
+                firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)
+                    .document(disputeLockId(dispute.propertyId, dispute.itemId)),
+            )
+            batch.commit().await()
+        }
+    }
+
+    private fun disputeLockId(propertyId: String, itemId: String): String = "${propertyId}_${itemId}"
 
     private fun Dispute.toFirestoreMap(): Map<String, Any?> = mapOf(
         "id" to id,
