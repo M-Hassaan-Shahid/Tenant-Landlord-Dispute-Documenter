@@ -187,6 +187,49 @@
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardParties"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                style="@style/Widget.ProofNest.Card"
+                app:cardElevation="0dp"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/label_parties"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textColor="@color/proofnest_primary" />
+
+                    <TextView
+                        android:id="@+id/textPartyLandlord"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/proofnest_on_surface"
+                        tools:text="Landlord: Sara Ahmed" />
+
+                    <TextView
+                        android:id="@+id/textPartyTenant"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/proofnest_on_surface"
+                        tools:text="Tenant: Ali Khan" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardWaitingLandlord"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -274,6 +317,16 @@
                         android:text="@string/approval_waiting_body"
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="@color/approval_banner_text" />
+
+                    <TextView
+                        android:id="@+id/textApprovalTenant"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="@color/approval_banner_text"
+                        android:textStyle="bold"
+                        tools:text="Requested by: Ali Khan" />
 
                     <LinearLayout
                         android:layout_width="match_parent"

@@ -155,6 +155,36 @@ class PropertyDetailsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                    viewModel.property,
+                    viewModel.partyNames,
+                    authRepo.currentUserId,
+                ) { property, names, uid -> Triple(property, names, uid) }
+                    .collect { (property, names, uid) ->
+                        renderParties(property, names, uid)
+                    }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.pendingTenant.collect { tenant ->
+                    val name = tenant?.displayName?.takeIf { it.isNotBlank() }
+                    binding.textApprovalTenant.text = when {
+                        name != null && tenant.email.isNotBlank() ->
+                            getString(R.string.approval_requested_by_email, name, tenant.email)
+                        name != null -> getString(R.string.approval_requested_by, name)
+                        else -> getString(
+                            R.string.approval_requested_by,
+                            getString(R.string.approval_requested_unknown),
+                        )
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     val busy = state.isLoading
                     binding.buttonApprove.isEnabled = !busy
@@ -210,6 +240,41 @@ class PropertyDetailsFragment : Fragment() {
         val isTenant = property.tenantId == currentUser
         binding.cardTenantPending.visibility =
             if (isTenant && property.status == PropertyStatus.PENDING_APPROVAL) View.VISIBLE else View.GONE
+    }
+
+    private fun renderParties(property: Property?, names: Map<String, String>, currentUser: String?) {
+        if (property == null) {
+            binding.cardParties.visibility = View.GONE
+            return
+        }
+        // Only worth showing once a tenant exists; before that the invite card covers it.
+        val hasTenant = property.tenantId != null
+        if (!hasTenant) {
+            binding.cardParties.visibility = View.GONE
+            return
+        }
+        binding.cardParties.visibility = View.VISIBLE
+
+        val landlordName = names[property.landlordId]?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.party_unknown)
+        binding.textPartyLandlord.text = if (property.landlordId == currentUser) {
+            getString(R.string.party_landlord_you, landlordName)
+        } else {
+            getString(R.string.party_landlord, landlordName)
+        }
+
+        val tenantId = property.tenantId
+        if (tenantId == null) {
+            binding.textPartyTenant.text = getString(R.string.party_tenant_none)
+        } else {
+            val tenantName = names[tenantId]?.takeIf { it.isNotBlank() }
+                ?: getString(R.string.party_unknown)
+            binding.textPartyTenant.text = if (tenantId == currentUser) {
+                getString(R.string.party_tenant_you, tenantName)
+            } else {
+                getString(R.string.party_tenant, tenantName)
+            }
+        }
     }
 
     private fun renderRoleActions(

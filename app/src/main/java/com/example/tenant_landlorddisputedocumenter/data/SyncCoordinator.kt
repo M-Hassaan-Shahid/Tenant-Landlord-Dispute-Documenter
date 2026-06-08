@@ -119,6 +119,11 @@ class SyncCoordinator(
                 container.propertyRepository.syncForUser(uid)
             }.exceptionOrNull()),
         )
+        result = result.merge(
+            SyncResult.from("party profiles", runCatching {
+                hydratePartyProfiles(uid)
+            }.exceptionOrNull()),
+        )
         result = result.merge(container.notificationRepository.syncForUser(uid))
         result = result.merge(
             SyncResult.from("photo uploads", runCatching {
@@ -126,6 +131,21 @@ class SyncCoordinator(
             }.exceptionOrNull()),
         )
         return result
+    }
+
+    /**
+     * Caches the public profile of every counterparty (the other landlord/tenant) across the
+     * user's properties into Room, so names can be shown everywhere without a per-screen fetch.
+     */
+    private suspend fun hydratePartyProfiles(uid: String) {
+        val properties = container.propertyRepository.observeForUser(uid).first()
+        val counterpartyIds = properties
+            .flatMap { listOfNotNull(it.landlordId, it.tenantId) }
+            .filter { it.isNotBlank() && it != uid }
+            .distinct()
+        for (id in counterpartyIds) {
+            runCatching { container.authRepository.refreshProfile(id) }
+        }
     }
 
     private suspend fun syncPropertyData(propertyId: String, force: Boolean): SyncResult {

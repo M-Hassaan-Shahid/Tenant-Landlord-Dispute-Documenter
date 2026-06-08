@@ -81,13 +81,26 @@ beforeEach(async () => {
       body: 'x',
       read: false,
     });
-    // Dispute raised by the tenant; the landlord is the non-raiser resolver.
+    // Dispute raised by the tenant; the landlord is the non-raiser who proposes.
     await setDoc(doc(db, 'disputes', 'disp-1'), {
       propertyId: 'prop-active',
       raisedByUid: TENANT,
       status: 'OPEN',
       itemId: 'item-1',
       resolutionNote: '',
+      proposedByUid: '',
+      tenantResponseNote: '',
+      resolvedAtMillis: null,
+    });
+    // Dispute already awaiting the tenant's confirmation of a landlord proposal.
+    await setDoc(doc(db, 'disputes', 'disp-await'), {
+      propertyId: 'prop-active',
+      raisedByUid: TENANT,
+      status: 'AWAITING_TENANT_CONFIRMATION',
+      itemId: 'item-2',
+      resolutionNote: 'deduct cleaning fee',
+      proposedByUid: LANDLORD,
+      tenantResponseNote: '',
       resolvedAtMillis: null,
     });
   });
@@ -235,8 +248,18 @@ test('notifications: clients cannot delete notifications', async () => {
 
 // ---- disputes ------------------------------------------------------------
 
-test('disputes: a non-raiser member can resolve with the 3 allowed fields', async () => {
+test('disputes: the non-raiser (landlord) can propose a resolution', async () => {
   await assertSucceeds(
+    updateDoc(doc(asLandlord(), 'disputes', 'disp-1'), {
+      status: 'AWAITING_TENANT_CONFIRMATION',
+      resolutionNote: 'agreed',
+      proposedByUid: LANDLORD,
+    }),
+  );
+});
+
+test('disputes: the landlord cannot jump straight to RESOLVED (no tenant check)', async () => {
+  await assertFails(
     updateDoc(doc(asLandlord(), 'disputes', 'disp-1'), {
       status: 'RESOLVED',
       resolutionNote: 'agreed',
@@ -245,22 +268,52 @@ test('disputes: a non-raiser member can resolve with the 3 allowed fields', asyn
   );
 });
 
-test('disputes: resolving while touching an extra field is denied', async () => {
+test('disputes: proposing while touching an extra field is denied', async () => {
   await assertFails(
     updateDoc(doc(asLandlord(), 'disputes', 'disp-1'), {
-      status: 'RESOLVED',
+      status: 'AWAITING_TENANT_CONFIRMATION',
       resolutionNote: 'agreed',
-      resolvedAtMillis: 123,
+      proposedByUid: LANDLORD,
       extra: 'sneaky',
     }),
   );
 });
 
-test('disputes: the raiser cannot resolve their own dispute', async () => {
+test('disputes: the raiser cannot propose a resolution on their own dispute', async () => {
   await assertFails(
     updateDoc(doc(asTenant(), 'disputes', 'disp-1'), {
-      status: 'RESOLVED',
+      status: 'AWAITING_TENANT_CONFIRMATION',
       resolutionNote: 'self',
+      proposedByUid: TENANT,
+    }),
+  );
+});
+
+test('disputes: the raiser (tenant) can confirm a proposal as RESOLVED', async () => {
+  await assertSucceeds(
+    updateDoc(doc(asTenant(), 'disputes', 'disp-await'), {
+      status: 'RESOLVED',
+      tenantResponseNote: 'looks fair',
+      resolvedAtMillis: 123,
+    }),
+  );
+});
+
+test('disputes: the raiser (tenant) can reject a proposal as UNRESOLVED', async () => {
+  await assertSucceeds(
+    updateDoc(doc(asTenant(), 'disputes', 'disp-await'), {
+      status: 'UNRESOLVED',
+      tenantResponseNote: 'disagree',
+      resolvedAtMillis: 123,
+    }),
+  );
+});
+
+test('disputes: the landlord cannot confirm on the tenant’s behalf', async () => {
+  await assertFails(
+    updateDoc(doc(asLandlord(), 'disputes', 'disp-await'), {
+      status: 'RESOLVED',
+      tenantResponseNote: 'forced',
       resolvedAtMillis: 123,
     }),
   );
@@ -268,6 +321,22 @@ test('disputes: the raiser cannot resolve their own dispute', async () => {
 
 test('disputes: a stranger cannot read a dispute', async () => {
   await assertFails(getDoc(doc(asStranger(), 'disputes', 'disp-1')));
+});
+
+test('disputes: the landlord can LIST disputes by propertyId (app sync path)', async () => {
+  const q = query(
+    collection(asLandlord(), 'disputes'),
+    where('propertyId', '==', 'prop-active'),
+  );
+  await assertSucceeds(getDocs(q));
+});
+
+test('disputes: the tenant can LIST disputes by propertyId (app sync path)', async () => {
+  const q = query(
+    collection(asTenant(), 'disputes'),
+    where('propertyId', '==', 'prop-active'),
+  );
+  await assertSucceeds(getDocs(q));
 });
 
 test('disputes: clients cannot delete a dispute', async () => {

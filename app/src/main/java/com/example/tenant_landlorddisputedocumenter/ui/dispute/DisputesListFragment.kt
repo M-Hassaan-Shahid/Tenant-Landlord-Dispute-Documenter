@@ -19,7 +19,6 @@ import com.example.tenant_landlorddisputedocumenter.ProofNestApplication
 import com.example.tenant_landlorddisputedocumenter.R
 import com.example.tenant_landlorddisputedocumenter.databinding.FragmentDisputesListBinding
 import com.example.tenant_landlorddisputedocumenter.domain.model.Dispute
-import com.example.tenant_landlorddisputedocumenter.domain.model.DisputeStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyStatus
 import com.example.tenant_landlorddisputedocumenter.domain.model.PropertyFlowPolicy
 import com.example.tenant_landlorddisputedocumenter.ui.applyProofNestItemAnimations
@@ -60,7 +59,7 @@ class DisputesListFragment : Fragment() {
         guardPropertyAccess(propertyId, PropertyFlowPolicy::memberAccess) { }
         viewModel.loadForProperty(propertyId)
 
-        refreshPropertyInBackground(propertyId)
+        refreshPropertyInBackground(propertyId, force = true)
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
 
@@ -77,11 +76,9 @@ class DisputesListFragment : Fragment() {
             scope = viewLifecycleOwner.lifecycleScope,
             loadPhotos = { ids -> appContainer.inspectionRepository.getPhotos(ids) },
             onPhotoClick = { uri -> showPhotoViewer(uri) },
-            onResolve = { dispute -> showResolveDialog(dispute) },
-            canResolve = { dispute ->
-                val uid = appContainer.authRepository.currentUserId.value
-                uid != null && dispute.raisedByUid != uid
-            },
+            currentUid = { appContainer.authRepository.currentUserId.value },
+            onPropose = { dispute -> showProposeDialog(dispute) },
+            onRespond = { dispute -> showRespondDialog(dispute) },
         )
         binding.recyclerViewDisputes.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewDisputes.applyProofNestItemAnimations()
@@ -98,6 +95,12 @@ class DisputesListFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.partyNames.collect { adapter.updatePartyNames(it) }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(
                     viewModel.disputes,
                     appContainer.propertyRepository.observeProperty(propertyId),
@@ -106,8 +109,12 @@ class DisputesListFragment : Fragment() {
                     DisputesUiState(disputes, property, uid)
                 }.collect { state ->
                     adapter.submitList(state.disputes)
+                    val firstLoadDone = viewModel.uiState.value.firstLoadDone
+                    val empty = state.disputes.isEmpty()
+                    binding.progressLoading.visibility =
+                        if (empty && !firstLoadDone) View.VISIBLE else View.GONE
                     binding.layoutEmpty.visibility =
-                        if (state.disputes.isEmpty()) View.VISIBLE else View.GONE
+                        if (empty && firstLoadDone) View.VISIBLE else View.GONE
                     val property = state.property
                     val canRaise = when (property?.status) {
                         PropertyStatus.ACTIVE ->
@@ -138,6 +145,11 @@ class DisputesListFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     binding.fabRaiseDispute.isEnabled = !state.isLoading
+                    // When the first sync settles with nothing, swap the spinner for the empty state.
+                    if (state.firstLoadDone && adapter.itemCount == 0) {
+                        binding.progressLoading.visibility = View.GONE
+                        binding.layoutEmpty.visibility = View.VISIBLE
+                    }
                     state.error?.let {
                         Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         viewModel.clearMessages()
@@ -147,22 +159,41 @@ class DisputesListFragment : Fragment() {
         }
     }
 
-    private fun showResolveDialog(dispute: Dispute) {
+    /** Landlord side: propose a resolution that the tenant must still confirm. */
+    private fun showProposeDialog(dispute: Dispute) {
         val input = EditText(requireContext()).apply {
-            hint = "Resolution note"
+            hint = getString(R.string.dispute_resolution_hint)
             setPadding(48, 32, 48, 16)
         }
         AlertDialog.Builder(requireContext())
-            .setTitle("Resolve dispute")
-            .setMessage("Mark this dispute as resolved or unresolved?")
+            .setTitle(R.string.dispute_propose_title)
+            .setMessage(R.string.dispute_propose_message)
             .setView(input)
-            .setPositiveButton("Resolved") { _, _ ->
-                viewModel.resolveDispute(dispute.id, input.text.toString(), DisputeStatus.RESOLVED)
+            .setPositiveButton(R.string.dispute_propose_send) { _, _ ->
+                viewModel.proposeResolution(dispute.id, input.text.toString())
             }
-            .setNegativeButton("Unresolved") { _, _ ->
-                viewModel.resolveDispute(dispute.id, input.text.toString(), DisputeStatus.UNRESOLVED)
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** Tenant side: confirm or reject the landlord's proposed resolution. */
+    private fun showRespondDialog(dispute: Dispute) {
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.dispute_response_hint)
+            setPadding(48, 32, 48, 16)
+        }
+        val proposal = dispute.resolutionNote.ifBlank { getString(R.string.dispute_no_proposal_text) }
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.dispute_review_title)
+            .setMessage(getString(R.string.dispute_review_message, proposal))
+            .setView(input)
+            .setPositiveButton(R.string.dispute_confirm_resolved) { _, _ ->
+                viewModel.respondToProposal(dispute.id, accept = true, responseNote = input.text.toString())
             }
-            .setNeutralButton("Cancel", null)
+            .setNegativeButton(R.string.dispute_reject) { _, _ ->
+                viewModel.respondToProposal(dispute.id, accept = false, responseNote = input.text.toString())
+            }
+            .setNeutralButton(R.string.cancel, null)
             .show()
     }
 

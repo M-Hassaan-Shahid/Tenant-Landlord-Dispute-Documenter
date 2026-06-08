@@ -324,13 +324,30 @@ service cloud.firestore {
           request.resource.data.propertyId,
           request.resource.data.itemId
         ))).data.disputeId == disputeId;
+      // Two-step mutual resolution. The raiser (tenant) can never unilaterally close a
+      // dispute as resolved; the non-raiser (landlord) can only propose.
       allow update: if isPropertyMember(resource.data.propertyId)
-        && resource.data.status == 'OPEN'
-        && request.auth.uid != resource.data.raisedByUid
-        && request.resource.data.status in ['RESOLVED', 'UNRESOLVED']
         && request.resource.data.raisedByUid == resource.data.raisedByUid
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'resolutionNote', 'resolvedAtMillis']);
+        && (
+          // Step 1: non-raiser proposes a resolution (OPEN -> AWAITING_TENANT_CONFIRMATION).
+          (
+            resource.data.status == 'OPEN'
+            && request.auth.uid != resource.data.raisedByUid
+            && request.resource.data.status == 'AWAITING_TENANT_CONFIRMATION'
+            && request.resource.data.proposedByUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'resolutionNote', 'proposedByUid'])
+          )
+          ||
+          // Step 2: the raiser confirms or rejects the proposal.
+          (
+            resource.data.status == 'AWAITING_TENANT_CONFIRMATION'
+            && request.auth.uid == resource.data.raisedByUid
+            && request.resource.data.status in ['RESOLVED', 'UNRESOLVED']
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'tenantResponseNote', 'resolvedAtMillis'])
+          )
+        );
       allow delete: if false;
     }
 
@@ -348,9 +365,10 @@ service cloud.firestore {
         )
         && !exists(/databases/$(database)/documents/disputeItemLocks/$(lockId));
       allow update: if false;
+      // Either member may release the lock once the dispute reaches a terminal state. The
+      // raiser (tenant) is the one who finalizes the dispute, so they must be able to delete.
       allow delete: if isSignedIn()
-        && isPropertyMember(resource.data.propertyId)
-        && request.auth.uid != resource.data.raisedByUid;
+        && isPropertyMember(resource.data.propertyId);
     }
 
     match /notifications/{notificationId} {

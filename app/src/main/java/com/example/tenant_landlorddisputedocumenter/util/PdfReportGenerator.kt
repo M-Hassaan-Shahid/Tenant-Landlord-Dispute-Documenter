@@ -397,7 +397,8 @@ class PdfReportGenerator(private val context: Context) {
             drawText(state, "  Raised by ${dispute.raisedByRole} on ${DateUtils.formatShortDate(dispute.raisedAtMillis)}", mutedPaint)
             drawText(state, "  Reason: ${dispute.reason}", bodyPaint)
             if (dispute.counterNote.isNotBlank()) drawText(state, "  Counter: ${dispute.counterNote}", bodyPaint)
-            if (dispute.resolutionNote.isNotBlank()) drawText(state, "  Resolution: ${dispute.resolutionNote}", bodyPaint)
+            if (dispute.resolutionNote.isNotBlank()) drawText(state, "  Proposed resolution: ${dispute.resolutionNote}", bodyPaint)
+            if (dispute.tenantResponseNote.isNotBlank()) drawText(state, "  Tenant response: ${dispute.tenantResponseNote}", bodyPaint)
             spacer(state, 6f)
         }
     }

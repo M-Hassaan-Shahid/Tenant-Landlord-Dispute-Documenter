@@ -68,38 +68,78 @@ class DisputeRepository(
             clearPendingDisputeId(propertyId, itemId, raisedByUid)
         } catch (e: Exception) {
             disputeDao.delete(dispute.id)
+            // If the lock landed but the dispute write failed, remove the orphan lock so a
+            // retry isn't permanently wedged (lock creation requires the lock to be absent).
+            runCatching { removeOwnDisputeLock(dispute) }
             throw e
         }
         return dispute
     }
 
-    suspend fun resolve(
+    /**
+     * Step 1 of resolution: the non-raiser (landlord) proposes how the dispute should be
+     * settled. This does NOT close the dispute — it moves to
+     * [DisputeStatus.AWAITING_TENANT_CONFIRMATION] so the tenant who raised it must agree.
+     */
+    suspend fun proposeResolution(
         disputeId: String,
-        resolverUid: String,
+        proposerUid: String,
         resolutionNote: String,
-        status: DisputeStatus,
     ) {
-        require(status == DisputeStatus.RESOLVED || status == DisputeStatus.UNRESOLVED) {
-            "Invalid dispute resolution status."
-        }
         val existing = disputeDao.get(disputeId)?.toDomain() ?: error("Dispute not found.")
-        require(existing.status == DisputeStatus.OPEN) { "This dispute is already closed." }
-        require(existing.raisedByUid != resolverUid) {
+        require(existing.status == DisputeStatus.OPEN) {
+            "A resolution has already been proposed or this dispute is closed."
+        }
+        require(existing.raisedByUid != proposerUid) {
             "You cannot resolve a dispute you raised."
         }
         val trimmedNote = InputValidation.trimToMax(resolutionNote)
-        if (status == DisputeStatus.RESOLVED && trimmedNote.isBlank()) {
-            error("Please provide a resolution note when marking a dispute resolved.")
+        require(trimmedNote.isNotBlank()) {
+            "Please describe how the dispute should be resolved."
         }
         val updated = existing.copy(
             resolutionNote = trimmedNote,
-            status = status,
+            proposedByUid = proposerUid,
+            status = DisputeStatus.AWAITING_TENANT_CONFIRMATION,
+        )
+        val previous = existing
+        disputeDao.upsert(DisputeEntity.from(updated))
+        try {
+            pushProposal(updated)
+        } catch (e: Exception) {
+            disputeDao.upsert(DisputeEntity.from(previous))
+            throw e
+        }
+    }
+
+    /**
+     * Step 2 of resolution: the raiser (tenant) confirms ([accept] == true → RESOLVED) or
+     * rejects ([accept] == false → UNRESOLVED) the proposed resolution. Only this mutual
+     * confirmation can close a dispute as resolved, and it releases the item lock.
+     */
+    suspend fun respondToProposal(
+        disputeId: String,
+        responderUid: String,
+        accept: Boolean,
+        responseNote: String = "",
+    ) {
+        val existing = disputeDao.get(disputeId)?.toDomain() ?: error("Dispute not found.")
+        require(existing.status == DisputeStatus.AWAITING_TENANT_CONFIRMATION) {
+            "There is no pending resolution to confirm."
+        }
+        require(existing.raisedByUid == responderUid) {
+            "Only the tenant who raised this dispute can confirm the resolution."
+        }
+        val trimmedNote = InputValidation.trimToMax(responseNote)
+        val updated = existing.copy(
+            tenantResponseNote = trimmedNote,
+            status = if (accept) DisputeStatus.RESOLVED else DisputeStatus.UNRESOLVED,
             resolvedAtMillis = System.currentTimeMillis(),
         )
         val previous = existing
         disputeDao.upsert(DisputeEntity.from(updated))
         try {
-            pushDisputeAndReleaseLock(updated)
+            pushResponseAndReleaseLock(updated)
             clearPendingDisputeId(updated.propertyId, updated.itemId, updated.raisedByUid)
         } catch (e: Exception) {
             disputeDao.upsert(DisputeEntity.from(previous))
@@ -135,6 +175,21 @@ class DisputeRepository(
                         "raisedByUid" to dispute.raisedByUid,
                     ),
                 ).await()
+        }
+    }
+
+    /**
+     * Deletes the item lock only if it still points at [dispute] — i.e. the orphan we created
+     * during a failed [raise]. Guarded so we never remove a lock that belongs to a different,
+     * still-valid dispute on the same item.
+     */
+    private suspend fun removeOwnDisputeLock(dispute: Dispute) {
+        val ref = firestore.collection(FirestorePaths.DISPUTE_ITEM_LOCKS)
+            .document(disputeLockId(dispute.propertyId, dispute.itemId))
+        val snap = ref.get().await()
+        if (snap.getString("disputeId") == dispute.id) {
+            syncCache.invalidateProperty(dispute.propertyId)
+            firestoreWrite("dispute lock") { ref.delete().await() }
         }
     }
 
@@ -178,16 +233,29 @@ class DisputeRepository(
         return Ids.newId().also { savePendingDisputeId(propertyId, itemId, raisedByUid, it) }
     }
 
-    private suspend fun pushDisputeAndReleaseLock(dispute: Dispute) {
+    private suspend fun pushProposal(dispute: Dispute) {
+        syncCache.invalidateProperty(dispute.propertyId)
+        firestoreWrite("dispute") {
+            // Update only the keys the proposal branch of the security rule permits.
+            firestore.collection(FirestorePaths.DISPUTES).document(dispute.id)
+                .update(
+                    "status", dispute.status.name,
+                    "resolutionNote", dispute.resolutionNote,
+                    "proposedByUid", dispute.proposedByUid,
+                ).await()
+        }
+    }
+
+    private suspend fun pushResponseAndReleaseLock(dispute: Dispute) {
         syncCache.invalidateProperty(dispute.propertyId)
         firestoreWrite("dispute") {
             val batch = firestore.batch()
-            // Update only the keys the security rule permits on resolve; a full
+            // Update only the keys the confirm/reject branch of the rule permits; a full
             // set() would touch immutable fields and be rejected by the rule.
             batch.update(
                 firestore.collection(FirestorePaths.DISPUTES).document(dispute.id),
                 "status", dispute.status.name,
-                "resolutionNote", dispute.resolutionNote,
+                "tenantResponseNote", dispute.tenantResponseNote,
                 "resolvedAtMillis", dispute.resolvedAtMillis,
             )
             batch.delete(
@@ -210,6 +278,8 @@ class DisputeRepository(
         "counterPhotoIds" to counterPhotoIds,
         "counterNote" to counterNote,
         "resolutionNote" to resolutionNote,
+        "proposedByUid" to proposedByUid,
+        "tenantResponseNote" to tenantResponseNote,
         "status" to status.name,
         "raisedAtMillis" to raisedAtMillis,
         "resolvedAtMillis" to resolvedAtMillis,
@@ -225,6 +295,8 @@ class DisputeRepository(
         counterPhotoIds = stringList("counterPhotoIds"),
         counterNote = getString("counterNote").orEmpty(),
         resolutionNote = getString("resolutionNote") ?: "",
+        proposedByUid = getString("proposedByUid").orEmpty(),
+        tenantResponseNote = getString("tenantResponseNote").orEmpty(),
         status = DisputeStatus.from(getString("status")),
         raisedAtMillis = getLong("raisedAtMillis") ?: System.currentTimeMillis(),
         resolvedAtMillis = getLong("resolvedAtMillis"),

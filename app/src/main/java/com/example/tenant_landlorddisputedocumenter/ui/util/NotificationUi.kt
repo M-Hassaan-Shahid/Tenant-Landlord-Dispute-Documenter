@@ -15,6 +15,7 @@ object NotificationUi {
         NotificationType.TENANT_APPROVED,
         NotificationType.TENANT_REJECTED -> R.drawable.ic_person_add
         NotificationType.DISPUTE_RAISED,
+        NotificationType.DISPUTE_RESOLUTION_PROPOSED,
         NotificationType.DISPUTE_RESOLVED -> R.drawable.ic_warning
         NotificationType.LEASE_ENDING -> R.drawable.ic_description
         NotificationType.GENERIC -> R.drawable.ic_notifications

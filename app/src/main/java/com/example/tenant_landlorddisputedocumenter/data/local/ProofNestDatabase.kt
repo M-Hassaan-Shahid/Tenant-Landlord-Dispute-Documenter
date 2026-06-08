@@ -35,7 +35,7 @@ import com.example.tenant_landlorddisputedocumenter.data.local.entity.UserEntity
         DisputeEntity::class,
         NotificationEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -70,6 +70,17 @@ abstract class ProofNestDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE disputes ADD COLUMN proposedByUid TEXT NOT NULL DEFAULT ''",
+                )
+                db.execSQL(
+                    "ALTER TABLE disputes ADD COLUMN tenantResponseNote TEXT NOT NULL DEFAULT ''",
+                )
+            }
+        }
+
         @Volatile private var instance: ProofNestDatabase? = null
 
         fun get(context: Context): ProofNestDatabase =
@@ -79,7 +90,7 @@ abstract class ProofNestDatabase : RoomDatabase() {
                     ProofNestDatabase::class.java,
                     NAME,
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }

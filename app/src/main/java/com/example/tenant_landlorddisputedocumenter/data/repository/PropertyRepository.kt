@@ -160,24 +160,28 @@ class PropertyRepository(
             "No pending tenant request to reject."
         }
         val rejectedTenantId = existing.tenantId
+        // Notify the tenant BEFORE removing them: the notification security rule only allows
+        // messaging a current property member, so once tenantId is cleared the write is
+        // impossible. Best-effort — a delivery failure must never block the rejection.
+        rejectedTenantId?.let { tenantId ->
+            runCatching {
+                notificationRepository.push(
+                    recipientUid = tenantId,
+                    type = NotificationType.TENANT_REJECTED,
+                    title = "Request declined",
+                    body = "Your request to join ${existing.address} was declined.",
+                    propertyId = propertyId,
+                )
+            }
+        }
         val updated = existing.copy(
             tenantId = null,
             status = PropertyStatus.REJECTED,
             updatedAtMillis = System.currentTimeMillis(),
         )
         propertyDao.upsert(updated)
-        val domain = updated.toDomain()
         try {
-            pushProperty(domain)
-            rejectedTenantId?.let { tenantId ->
-                notificationRepository.push(
-                    recipientUid = tenantId,
-                    type = NotificationType.TENANT_REJECTED,
-                    title = "Request declined",
-                    body = "Your request to join ${domain.address} was declined.",
-                    propertyId = propertyId,
-                )
-            }
+            pushProperty(updated.toDomain())
         } catch (e: Exception) {
             propertyDao.upsert(existing)
             throw e

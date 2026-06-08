@@ -17,6 +17,15 @@ class PropertyAdapter(
     private val onClick: (Property) -> Unit,
 ) : ListAdapter<Property, PropertyAdapter.PropertyViewHolder>(PropertyDiffCallback()) {
 
+    /** uid -> display name, set by the fragment as cached profiles load. */
+    private var partyNames: Map<String, String> = emptyMap()
+
+    fun setPartyNames(names: Map<String, String>) {
+        if (names == partyNames) return
+        partyNames = names
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PropertyViewHolder {
         val binding = ItemPropertyBinding.inflate(
             LayoutInflater.from(parent.context), parent, false,
@@ -25,14 +34,19 @@ class PropertyAdapter(
     }
 
     override fun onBindViewHolder(holder: PropertyViewHolder, position: Int) {
-        holder.bind(getItem(position), currentUserId, onClick)
+        holder.bind(getItem(position), currentUserId, partyNames, onClick)
         holder.staggerAppear(position)
     }
 
     class PropertyViewHolder(private val binding: ItemPropertyBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(property: Property, currentUserId: String, onClick: (Property) -> Unit) {
+        fun bind(
+            property: Property,
+            currentUserId: String,
+            partyNames: Map<String, String>,
+            onClick: (Property) -> Unit,
+        ) {
             binding.textAddress.text = property.address
             PropertyStatusUi.apply(binding.chipStatus, property.status)
 
@@ -40,6 +54,16 @@ class PropertyAdapter(
             val roleLabel = if (isLandlord) "Landlord" else "Tenant"
             val statusHint = PropertyRoleUi.propertyCardHint(property, currentUserId)
             binding.textRole.text = "$roleLabel$statusHint"
+
+            val counterpartyId = if (isLandlord) property.tenantId else property.landlordId
+            val counterpartyName = counterpartyId?.let { partyNames[it] }?.takeIf { it.isNotBlank() }
+            if (counterpartyName != null) {
+                val label = if (isLandlord) "Tenant" else "Landlord"
+                binding.textParty.text = "$label: $counterpartyName"
+                binding.textParty.visibility = android.view.View.VISIBLE
+            } else {
+                binding.textParty.visibility = android.view.View.GONE
+            }
 
             binding.textRent.text =
                 "PKR ${property.rent.toInt()}/mo · Deposit PKR ${property.deposit.toInt()}"

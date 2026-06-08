@@ -16,7 +16,9 @@ import com.example.tenant_landlorddisputedocumenter.ui.applyAppBarStatusBarInset
 import com.example.tenant_landlorddisputedocumenter.ui.applyBottomNavInset
 import com.example.tenant_landlorddisputedocumenter.ui.navigateAnimated
 import com.example.tenant_landlorddisputedocumenter.ui.pulse
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
@@ -26,6 +28,7 @@ import com.example.tenant_landlorddisputedocumenter.ui.auth.LoginActivity
 import com.example.tenant_landlorddisputedocumenter.navigation.PropertyDetailsFragmentArgs
 import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -33,6 +36,9 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_PROPERTY_ID = "extra_property_id"
+
+        /** How often to auto-pull remote data while the app is in the foreground. */
+        private const val AUTO_SYNC_INTERVAL_MS = 4_000L
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -83,26 +89,84 @@ class MainActivity : AppCompatActivity() {
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHostFragment.navController
 
+        val topLevelIds = setOf(
+            R.id.navigation_dashboard,
+            R.id.navigation_notifications,
+            R.id.navigation_profile,
+        )
         binding.bottomNavigation.apply {
             isItemActiveIndicatorEnabled = false
             setupWithNavController(navController)
+            // Always navigate to the chosen top-level destination, even from nested screens.
+            setOnItemSelectedListener { item ->
+                if (navController.currentDestination?.id == item.itemId) return@setOnItemSelectedListener true
+                val options = androidx.navigation.navOptions {
+                    launchSingleTop = true
+                    restoreState = true
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                        inclusive = false
+                    }
+                }
+                runCatching { navController.navigate(item.itemId, null, options) }.isSuccess
+            }
+            setOnItemReselectedListener { item ->
+                // Re-tapping a tab from a nested screen pops back to that tab's root.
+                if (navController.currentDestination?.id != item.itemId) {
+                    navController.navigate(item.itemId, null, androidx.navigation.navOptions {
+                        launchSingleTop = true
+                        restoreState = true
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                            inclusive = false
+                        }
+                    })
+                }
+            }
         }
         var lastTopLevelId = R.id.navigation_dashboard
         navController.addOnDestinationChangedListener { _, destination, _ ->
-            val topLevel = destination.id in setOf(
-                R.id.navigation_dashboard,
-                R.id.navigation_notifications,
-                R.id.navigation_profile,
-            )
+            val topLevel = destination.id in topLevelIds
             if (topLevel && destination.id != lastTopLevelId) {
                 binding.navHostFragment.pulse(1.02f)
                 lastTopLevelId = destination.id
             }
+            // Pull fresh remote data whenever the user changes screens, so landlord-driven
+            // changes surface promptly without a manual pull-to-refresh.
+            syncNow()
         }
         requestNotificationPermissionIfNeeded()
         registerFcmToken()
         bindNotificationBadge()
+        startAutoSync()
         consumeDeepLink(intent)
+    }
+
+    /**
+     * Periodically pulls remote data into Room while the app is in the foreground, so every
+     * screen (which observes Room) stays fresh without the user pulling-to-refresh. The loop is
+     * tied to the STARTED lifecycle, so it pauses when the app is backgrounded and resumes after.
+     */
+    private fun startAutoSync() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    val uid = container.firebaseAuth.currentUser?.uid
+                    if (uid != null) {
+                        runCatching { container.syncCoordinator.syncAllForUser(uid, force = true) }
+                    }
+                    delay(AUTO_SYNC_INTERVAL_MS)
+                }
+            }
+        }
+    }
+
+    /** Fire-and-forget force sync of all data for the current user. */
+    private fun syncNow() {
+        val uid = container.firebaseAuth.currentUser?.uid ?: return
+        lifecycleScope.launch {
+            runCatching { container.syncCoordinator.syncAllForUser(uid, force = true) }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative geometric pattern for headers: concentric rings + dots in the
+     brand's gold accent at low alpha, sitting on top of the green gradient. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp"
+    android:height="120dp"
+    android:viewportWidth="360"
+    android:viewportHeight="120">
+
+    <!-- Large concentric rings, top-right -->
+    <path
+        android:strokeColor="@color/proofnest_secondary"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.20"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M320,12 m-46,0 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0" />
+    <path
+        android:strokeColor="@color/proofnest_secondary"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.16"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M320,12 m-72,0 a72,72 0 1,0 144,0 a72,72 0 1,0 -144,0" />
+
+    <!-- Small accent dots -->
+    <path
+        android:fillColor="@color/proofnest_secondary"
+        android:fillAlpha="0.28"
+        android:pathData="M40,24 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <path
+        android:fillColor="@color/proofnest_secondary"
+        android:fillAlpha="0.22"
+        android:pathData="M70,52 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path
+        android:fillColor="@color/proofnest_secondary"
+        android:fillAlpha="0.18"
+        android:pathData="M28,72 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+
+    <!-- Faint white ring, bottom-left for depth -->
+    <path
+        android:strokeColor="@color/white"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.10"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M48,104 m-34,0 a34,34 0 1,0 68,0 a34,34 0 1,0 -68,0" />
+</vector>

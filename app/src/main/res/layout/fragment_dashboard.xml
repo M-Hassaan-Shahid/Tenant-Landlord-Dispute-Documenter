@@ -9,13 +9,14 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@android:color/transparent">
+        android:background="@drawable/bg_toolbar_header">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             style="@style/Widget.ProofNest.Toolbar"
             android:layout_width="match_parent"
             android:layout_height="@dimen/toolbar_content_height"
+            android:background="@android:color/transparent"
             app:title="@string/dashboard_title" />
     </com.google.android.material.appbar.AppBarLayout>
 

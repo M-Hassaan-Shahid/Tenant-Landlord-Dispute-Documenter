@@ -31,6 +31,7 @@ class InspectionFragment : Fragment() {
     private var _binding: FragmentInspectionBinding? = null
     private val binding get() = _binding!!
     private var hasRooms = false
+    private var roomsSyncDone = false
     private var isSubmitting = false
     private var allItemsRated = false
     private var hasPhasePhoto = false
@@ -62,7 +63,20 @@ class InspectionFragment : Fragment() {
         guardPropertyAccess(propertyId, { property, uid ->
             PropertyFlowPolicy.inspectionAccess(property, uid, phase)
         }) { }
-        refreshPropertyInBackground(propertyId)
+        val appContainer = (requireActivity().application as ProofNestApplication).container
+        // Drive the sync ourselves so the "no rooms" toast only fires once the first remote
+        // pull settles — otherwise it false-fires on the initial empty Room emission.
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching { appContainer.syncCoordinator.refreshPropertyData(propertyId, force = false) }
+            roomsSyncDone = true
+            if (_binding != null && !hasRooms) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.inspection_no_rooms),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
 
         binding.toolbar.setNavigationOnClickListener { findNavController().navigateUp() }
         binding.toolbar.title = if (phase == InspectionPhase.MOVE_OUT) {
@@ -108,7 +122,9 @@ class InspectionFragment : Fragment() {
                     binding.tabLayoutRooms.visibility = if (hasRooms) View.VISIBLE else View.GONE
                     binding.buttonFinishInspection.visibility = View.VISIBLE
                     updateFinishButton()
-                    if (!hasRooms) {
+                    // Toast for an empty room set is only meaningful after the first sync settles;
+                    // it's handled there to avoid false-firing on the initial empty emission.
+                    if (!hasRooms && roomsSyncDone) {
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.inspection_no_rooms),

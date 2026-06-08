@@ -81,6 +81,12 @@ class DashboardFragment : Fragment() {
                     (binding.includeShimmer as? ShimmerFrameLayout)?.showShimmer(
                         state.isLoading && adapter.itemCount == 0,
                     )
+                    // Once the first sync settles with no properties, reveal the empty state.
+                    if (!state.isLoading && adapter.itemCount == 0) {
+                        binding.layoutEmpty.visibility = View.VISIBLE
+                        binding.cardWelcome.visibility = View.GONE
+                        binding.recyclerViewProperties.visibility = View.GONE
+                    }
                     state.error?.let { message ->
                         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
                         viewModel.clearError()
@@ -119,9 +125,17 @@ class DashboardFragment : Fragment() {
         
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.partyNames.collect { adapter.setPartyNames(it) }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.properties.collect { props ->
                     adapter.submitList(props)
-                    val empty = props.isEmpty()
+                    // Suppress the empty state during the very first sync so the user sees the
+                    // shimmer instead of a misleading "no properties" message.
+                    val empty = props.isEmpty() && !viewModel.uiState.value.isLoading
                     if (empty) {
                         binding.layoutEmpty.visibility = View.VISIBLE
                         binding.layoutEmpty.fadeInSlideUp()

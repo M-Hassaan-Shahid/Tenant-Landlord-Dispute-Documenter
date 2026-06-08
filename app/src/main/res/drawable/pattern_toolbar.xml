@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Decorative pattern tuned for a wide, short app-bar. Gold rings + dots at low
+     alpha so the white title stays readable. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp"
+    android:height="64dp"
+    android:viewportWidth="360"
+    android:viewportHeight="64">
+
+    <!-- Concentric rings, top-right corner -->
+    <path
+        android:strokeColor="@color/proofnest_secondary"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.22"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M338,6 m-28,0 a28,28 0 1,0 56,0 a28,28 0 1,0 -56,0" />
+    <path
+        android:strokeColor="@color/proofnest_secondary"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.16"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M338,6 m-46,0 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0" />
+
+    <!-- Faint white ring, mid-right for depth -->
+    <path
+        android:strokeColor="@color/white"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.10"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M286,52 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0" />
+
+    <!-- Scattered accent dots -->
+    <path
+        android:fillColor="@color/proofnest_secondary"
+        android:fillAlpha="0.24"
+        android:pathData="M250,18 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path
+        android:fillColor="@color/proofnest_secondary"
+        android:fillAlpha="0.18"
+        android:pathData="M312,40 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" />
+</vector>

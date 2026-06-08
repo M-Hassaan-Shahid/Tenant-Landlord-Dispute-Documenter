@@ -9,10 +9,9 @@
                 android:startColor="@color/proofnest_primary"
                 android:centerColor="@color/proofnest_primary"
                 android:endColor="@color/proofnest_primary_dark" />
-            <corners android:radius="@dimen/card_corner_radius" />
         </shape>
     </item>
 
     <!-- Decorative geometric pattern overlay -->
-    <item android:drawable="@drawable/pattern_header" />
+    <item android:drawable="@drawable/pattern_toolbar" />
 </layer-list>

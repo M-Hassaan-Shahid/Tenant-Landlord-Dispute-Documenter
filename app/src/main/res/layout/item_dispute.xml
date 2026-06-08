@@ -30,6 +30,17 @@
             android:textAppearance="@style/TextAppearance.ProofNest.Muted"
             tools:text="Damage existed at move-in…" />
 
+        <TextView
+            android:id="@+id/textRaisedBy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textAppearance="?attr/textAppearanceLabelSmall"
+            android:textColor="@color/proofnest_on_surface_variant"
+            android:visibility="gone"
+            tools:text="Raised by Ali Khan"
+            tools:visibility="visible" />
+
         <com.google.android.material.chip.Chip
             android:id="@+id/chipStatus"
             style="@style/Widget.Material3.Chip.Assist"
@@ -38,6 +49,16 @@
             android:layout_marginTop="8dp"
             android:clickable="false"
             tools:text="OPEN" />
+
+        <TextView
+            android:id="@+id/textProposedResolution"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.ProofNest.Muted"
+            android:visibility="gone"
+            tools:text="Proposed: deduct PKR 2,000 from deposit"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/textEvidenceLabel"

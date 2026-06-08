@@ -84,6 +84,23 @@
             tools:text="Awaiting tenant" />
 
         <TextView
+            android:id="@+id/textParty"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="28dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@style/TextAppearance.ProofNest.Muted"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/propertyThumb"
+            app:layout_constraintTop_toBottomOf="@id/textRole"
+            tools:text="Tenant: Ali Khan"
+            tools:visibility="visible" />
+
+        <TextView
             android:id="@+id/textRent"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -93,7 +110,7 @@
             android:textAppearance="@style/TextAppearance.ProofNest.Muted"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/propertyThumb"
-            app:layout_constraintTop_toBottomOf="@id/textRole"
+            app:layout_constraintTop_toBottomOf="@id/textParty"
             tools:text="PKR 45,000/mo · Deposit PKR 90,000" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

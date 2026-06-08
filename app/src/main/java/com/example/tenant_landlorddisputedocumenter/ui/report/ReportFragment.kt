@@ -64,7 +64,7 @@ class ReportFragment : Fragment() {
                 val items = appContainer.inspectionRepository.observeAllItems(propertyId).first()
                 val disputes = appContainer.disputeRepository.observeForProperty(propertyId).first()
                 val openDisputes = disputes.count {
-                    it.status == DisputeStatus.OPEN || it.status == DisputeStatus.UNRESOLVED
+                    it.status.isActive || it.status == DisputeStatus.UNRESOLVED
                 }
                 val compared = items.filter { it.moveInRating != null && it.moveOutRating != null }
                 val degraded = compared.count { it.ratingDelta() == RatingDelta.DEGRADED }

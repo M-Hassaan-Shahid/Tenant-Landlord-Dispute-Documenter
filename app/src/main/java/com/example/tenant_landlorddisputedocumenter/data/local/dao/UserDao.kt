@@ -19,6 +19,12 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE uid = :uid LIMIT 1")
     fun observe(uid: String): Flow<UserEntity?>
 
+    @Query("SELECT * FROM users WHERE uid IN (:uids)")
+    fun observeByIds(uids: List<String>): Flow<List<UserEntity>>
+
+    @Query("SELECT * FROM users WHERE uid IN (:uids)")
+    suspend fun getByIds(uids: List<String>): List<UserEntity>
+
     @Query("DELETE FROM users WHERE uid = :uid")
     suspend fun delete(uid: String)
 }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -43,6 +44,21 @@ class DashboardViewModel(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
+        )
+
+    /** uid -> display name for every party across the user's properties (for card subtitles). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val partyNames: StateFlow<Map<String, String>> = properties
+        .flatMapLatest { props ->
+            val ids = props.flatMap { listOfNotNull(it.landlordId, it.tenantId) }.distinct()
+            authRepository.observeProfiles(ids).map { profiles ->
+                profiles.mapValues { it.value.displayName }
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap(),
         )
 
     init {

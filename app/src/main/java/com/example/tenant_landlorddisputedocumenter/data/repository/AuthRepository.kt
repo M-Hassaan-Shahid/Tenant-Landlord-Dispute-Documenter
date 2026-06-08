@@ -56,6 +56,14 @@ class AuthRepository(
         else userDao.observe(uid).map { it?.toDomain() }
     }
 
+    /** Observe cached profiles for a set of uids, keyed by uid. Empty list yields an empty map. */
+    fun observeProfiles(uids: List<String>): Flow<Map<String, User>> {
+        if (uids.isEmpty()) return flowOf(emptyMap())
+        return userDao.observeByIds(uids).map { list ->
+            list.associate { it.uid to it.toDomain() }
+        }
+    }
+
     suspend fun signUp(
         email: String,
         password: String,
@@ -158,6 +166,9 @@ class AuthRepository(
         )
     }
 
+    /** Public-facing profile (displayName, photoUrl, role) of any user — readable by members. */
+    suspend fun getPublicProfile(uid: String): User? = loadPublicProfile(uid)
+
     private suspend fun loadPublicProfile(uid: String): User? {
         val snap = runCatching {
             firestore.collection(FirestorePaths.PUBLIC_PROFILES).document(uid).get().await()
@@ -204,6 +215,51 @@ class AuthRepository(
     }.fold(
         onSuccess = { Outcome.Success(it) },
         onFailure = { Outcome.Failure(it, it.localizedMessage ?: "Could not save photo.") },
+    )
+
+    /** Update the editable profile fields (name, phone, CNIC) in Room, Firestore, and the public profile. */
+    suspend fun updateProfile(
+        uid: String,
+        displayName: String,
+        phone: String,
+        cnic: String,
+    ): Outcome<Unit> = runCatching {
+        val entity = userDao.get(uid)
+            ?: refreshProfile(uid)?.let { userDao.get(uid) }
+            ?: error("Profile not found.")
+        val updated = entity.toDomain().copy(
+            displayName = displayName.trim(),
+            phone = phone.trim(),
+            cnic = cnic.trim(),
+        )
+        userDao.upsert(UserEntity.from(updated))
+        firestoreWrite("profile details") {
+            firestore.collection(FirestorePaths.USERS).document(uid).update(
+                mapOf(
+                    "displayName" to updated.displayName,
+                    "phone" to updated.phone,
+                    "cnic" to updated.cnic,
+                ),
+            ).await()
+        }
+        writePublicProfile(updated)
+        Unit
+    }.fold(
+        onSuccess = { Outcome.Success(it) },
+        onFailure = { Outcome.Failure(it, FirebaseAuthErrors.userMessage(it)) },
+    )
+
+    /** Re-authenticate with the current password, then set a new password. */
+    suspend fun changePassword(currentPassword: String, newPassword: String): Outcome<Unit> = runCatching {
+        val firebaseUser = auth.currentUser ?: error("You are not signed in.")
+        val email = firebaseUser.email ?: error("This account has no email to re-authenticate.")
+        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(email, currentPassword)
+        firebaseUser.reauthenticate(credential).await()
+        firebaseUser.updatePassword(newPassword).await()
+        Unit
+    }.fold(
+        onSuccess = { Outcome.Success(it) },
+        onFailure = { Outcome.Failure(it, FirebaseAuthErrors.userMessage(it)) },
     )
 
     suspend fun updateFcmToken(uid: String, token: String) {

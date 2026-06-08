@@ -32,7 +32,7 @@ class SplashActivity : BaseActivity() {
         playEntranceAnimation()
 
         lifecycleScope.launch {
-            val minDisplayMs = 2_800L
+            val minDisplayMs = 500L
             val startMs = System.currentTimeMillis()
 
             val uid = container.firebaseAuth.currentUser?.uid
@@ -63,18 +63,18 @@ class SplashActivity : BaseActivity() {
                 .alpha(1f)
                 .translationY(0f)
                 .setStartDelay(delayMs)
-                .setDuration(1000L)
+                .setDuration(450L)
                 .setInterpolator(FastOutSlowInInterpolator())
                 .start()
         }
 
         animateIn(binding.textLogo, 0L)
-        animateIn(binding.textTagline, 200L)
+        animateIn(binding.textTagline, 120L)
 
         binding.progressLoader.alpha = 0f
         ObjectAnimator.ofFloat(binding.progressLoader, View.ALPHA, 0f, 1f).apply {
-            startDelay = 400L
-            duration = 600L
+            startDelay = 200L
+            duration = 300L
             interpolator = DecelerateInterpolator()
             doOnEnd { binding.progressLoader.alpha = 1f }
             start()
