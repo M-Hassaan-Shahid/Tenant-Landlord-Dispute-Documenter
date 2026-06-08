@@ -19,6 +19,5 @@ The APK is built against a Firebase project. For full cloud sync you need valid 
 ## Rebuild and refresh this file
 
 ```bash
-./gradlew :app:assembleDebug
-cp app/build/outputs/apk/debug/app-debug.apk releases/ProofNest-v1.0-debug.apk
+./gradlew buildDebugApk
 ```

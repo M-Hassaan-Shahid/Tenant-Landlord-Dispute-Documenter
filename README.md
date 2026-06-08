@@ -108,6 +108,8 @@ app/src/main/java/com/example/tenant_landlorddisputedocumenter/
 
 ```bash
 ./gradlew :app:assembleDebug
+# or build and refresh the APK in releases/
+./gradlew buildDebugApk
 # or open the project in Android Studio and hit Run
 ```
 
@@ -120,8 +122,7 @@ A ready-to-install debug APK is committed under [`releases/ProofNest-v1.0-debug.
 To refresh it after code changes:
 
 ```bash
-./gradlew :app:assembleDebug
-cp app/build/outputs/apk/debug/app-debug.apk releases/ProofNest-v1.0-debug.apk
+./gradlew buildDebugApk
 ```
 
 ---
